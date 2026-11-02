@@ -70,7 +70,7 @@ export default async function DestinationsPage({
       </div>
 
       <div className="container-page pt-7">
-        <Suspense fallback={<Skeleton className="h-52" />}>
+        <Suspense fallback={<Skeleton className="h-28" />}>
           <FilterBar
             basePath="/diem-den"
             searchPlaceholder="Tìm tên điểm đến, ví dụ: Sơn Đoòng"
