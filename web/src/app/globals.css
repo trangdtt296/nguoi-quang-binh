@@ -29,7 +29,7 @@
 
   /* Typography */
   --font-sans: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-source-serif), Georgia, serif;
+  --font-serif: var(--font-serif-display), Georgia, serif;
 
   /* Bo góc */
   --radius-card: 12px;

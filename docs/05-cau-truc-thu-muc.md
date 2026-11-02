@@ -159,7 +159,9 @@ Cách dùng: nền trắng là chủ đạo, chữ đen, các khối nhấn dùn
 ### 2.2 Typography
 
 - Tiêu đề: **Be Vietnam Pro** (weight 600–700) — font Việt hiện đại, dấu tiếng Việt chuẩn.
-- Nội dung: **Inter** hoặc **Source Serif 4** cho phần thân bài (chất tạp chí, dễ đọc đoạn dài).
+- Tiêu đề lớn và trích dẫn: **Lora** (chất tạp chí, dễ đọc đoạn dài).
+
+> **Bắt buộc:** mọi font dùng trong dự án phải có bộ ký tự `vietnamese` trên Google Fonts. Source Serif 4 từng được chọn nhưng không có subset này, khiến `next/font` dựng lỗi khi build — đã thay bằng Lora. Trước khi đổi sang font khác, kiểm tra subset trước.
 - Thang cỡ chữ: 12 / 14 / 16 / 18 / 22 / 28 / 36 / 48 / 64 px.
 - Dòng chữ thân bài rộng tối đa 68 ký tự.
 

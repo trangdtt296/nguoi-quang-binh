@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Be_Vietnam_Pro, Source_Serif_4 } from "next/font/google";
+import { Be_Vietnam_Pro, Lora } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -12,10 +12,15 @@ const beVietnam = Be_Vietnam_Pro({
   display: "swap",
 });
 
-const sourceSerif = Source_Serif_4({
-  subsets: ["latin", "vietnamese"],
+/*
+  Font serif cho tiêu đề. Phải là font có bộ ký tự tiếng Việt — Source Serif 4
+  không có subset "vietnamese" nên build hỏng; Lora thì có, và vẫn giữ được
+  chất tạp chí cho tiêu đề.
+*/
+const lora = Lora({
+  subsets: ["latin", "latin-ext", "vietnamese"],
   weight: ["400", "600"],
-  variable: "--font-source-serif",
+  variable: "--font-serif-display",
   display: "swap",
 });
 
@@ -43,7 +48,7 @@ export default async function RootLayout({
   const settings = await getSiteSettings();
 
   return (
-    <html lang="vi" className={`${beVietnam.variable} ${sourceSerif.variable}`}>
+    <html lang="vi" className={`${beVietnam.variable} ${lora.variable}`}>
       <body>
         <a
           href="#noi-dung"
