@@ -69,8 +69,8 @@ export default async function DestinationsPage({
         </p>
       </div>
 
-      <div className="container-page pt-8">
-        <Suspense fallback={<Skeleton className="h-40" />}>
+      <div className="container-page pt-7">
+        <Suspense fallback={<Skeleton className="h-52" />}>
           <FilterBar
             basePath="/diem-den"
             searchPlaceholder="Tìm tên điểm đến, ví dụ: Sơn Đoòng"
@@ -98,14 +98,14 @@ export default async function DestinationsPage({
         </Suspense>
       </div>
 
-      <div className="container-page mt-8 border-t border-line pt-5">
+      <div className="container-page mt-7">
         <p className="text-[14.5px] text-muted" aria-live="polite">
           Tìm thấy <strong className="text-ink">{formatNumber(result.total)}</strong>{" "}
           điểm đến
         </p>
       </div>
 
-      <div className="container-page mt-7">
+      <div className="container-page mt-5">
         {result.items.length ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {result.items.map((item) => (
