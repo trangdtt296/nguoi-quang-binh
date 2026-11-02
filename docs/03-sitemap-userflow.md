@@ -151,8 +151,8 @@ Danh sách → nút xóa → hộp thoại xác nhận (nêu rõ tên nội dung
 | 12 | Thư viện | Lưới album, lightbox xem ảnh lớn, video nhúng |
 | 13 | Liên hệ | Thông tin, form góp ý, bản đồ, liên kết Fanpage |
 | 14 | Tìm kiếm / 404 | Kết quả gom nhiều loại nội dung; trang lỗi có gợi ý quay về |
-| 15 | Góc học tập | Lọc theo lĩnh vực (lập trình / tiếng Anh / tiếng Nhật…), lưới card khóa học |
-| 16 | Chi tiết khóa học | Mô tả khóa, trình độ, danh sách bài theo thứ tự |
+| 15 | Góc học tập | Lọc theo lĩnh vực (lập trình / tiếng Anh / tiếng Nhật…), lưới card khóa học. Không phân theo trình độ |
+| 16 | Chi tiết khóa học | Mô tả khóa, danh sách bài theo thứ tự |
 | 17 | Bài học | Video nhúng, nội dung bài, danh sách bài bên cạnh, nút bài trước / bài sau |
 
 **Tổng công khai: 17 màn hình.**

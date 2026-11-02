@@ -120,12 +120,13 @@ Bảng mới **`learning_courses`** (khóa học / chuỗi bài):
 |---|---|---|
 | id, title, slug, description, cover_image_url | | như các bảng nội dung khác |
 | `category_id` | uuid FK → categories (`type = 'learning'`) | Lập trình / Tiếng Anh / Tiếng Nhật / Khác |
-| `level` | enum `course_level` | `beginner` \| `intermediate` \| `advanced` |
 | `lesson_count` | int | Tính lại khi thêm/bớt bài, để không phải đếm mỗi lần tải trang |
 | `status`, `published_at`, `view_count`, `is_featured`, `seo_*` | | như `articles` |
 | `created_at`, `updated_at`, `deleted_at` | | |
 
 `category_type` có thêm giá trị `learning`.
+
+**Không có trường trình độ.** Khóa học chỉ phân loại theo lĩnh vực: bấm vào một lĩnh vực là ra toàn bộ khóa thuộc lĩnh vực đó. Nếu một khóa dành cho người mới hay người đã biết, thì nói trong tiêu đề và mô tả, không cần thêm cột và thêm bộ lọc.
 
 **Không có** bảng `enrollments`, `progress` hay tài khoản người học: người xem vẫn ẩn danh, vào đọc bài và xem video, không đăng nhập. Nếu sau này muốn đánh dấu "đã học xong" thì mới cần thêm, và khi đó phải mở hệ thống tài khoản cho người dùng cuối — một thay đổi lớn, nên cân nhắc riêng.
 

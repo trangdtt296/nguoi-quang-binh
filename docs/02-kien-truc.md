@@ -126,7 +126,7 @@ GET  /api/v1/foods                 ?category=&page=&limit=
 GET  /api/v1/foods/:slug
 GET  /api/v1/events                ?upcoming=&page=&limit=
 GET  /api/v1/events/:slug
-GET  /api/v1/courses               ?category=&level=&page=&limit=
+GET  /api/v1/courses               ?category=&page=&limit=
 GET  /api/v1/courses/:slug                    (kèm danh sách bài theo thứ tự)
 GET  /api/v1/courses/:slug/:lessonSlug        (bài học + bài trước/sau)
 GET  /api/v1/albums                ?page=&limit=
