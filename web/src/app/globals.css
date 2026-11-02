@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/*
+  Design system — Người Quảng Bình
+  Tông đen · trắng · bạc · ghi sáng (xem docs/05-cau-truc-thu-muc.md).
+  Không dùng xanh dương, xanh lá, vàng đất làm màu dẫn.
+*/
+@theme {
+  /* Bản mệnh — đen và than chì */
+  --color-primary-50: #f2f4f6;
+  --color-primary-100: #e3e7ea;
+  --color-primary-500: #2b3339;
+  --color-primary-700: #1b2227;
+  --color-primary-900: #0d1114;
+
+  --color-deep: #39454d;
+  --color-abyss: #0d1114;
+
+  /* Tương sinh (Kim) — bạc và ghi sáng */
+  --color-silver: #c3ccd2;
+  --color-silver-50: #f2f4f6;
+
+  /* Trung tính */
+  --color-ink: #14181c;
+  --color-muted: #6b7780;
+  --color-line: #e4e7ea;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f7f8f9;
+
+  /* Typography */
+  --font-sans: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-source-serif), Georgia, serif;
+
+  /* Bo góc */
+  --radius-card: 12px;
+  --radius-btn: 8px;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+    Tông màu không còn màu riêng cho liên kết, nên mọi liên kết nằm trong
+    đoạn văn phải gạch chân — nếu chỉ đổi sắc độ xám thì người đọc không
+    phân biệt được đâu là chỗ bấm được.
+  */
+  .prose-body a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility container-page {
+  margin-inline: auto;
+  max-width: 1200px;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 768px) {
+  .container-page {
+    padding-inline: 1.5rem;
+  }
+}
