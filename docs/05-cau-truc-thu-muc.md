@@ -124,36 +124,37 @@ Trang công khai render phía server (lấy dữ liệu trong Server Component) 
 
 ### 2.1 Bảng màu
 
-Bảng màu theo hướng **mệnh Thủy** (chủ website sinh 1996 — Bính Tý, Giản Hạ Thủy): lấy xanh dương và xanh đen làm bản mệnh, trắng – bạc – ghi sáng làm màu tương sinh (Kim sinh Thủy). Bỏ hẳn vàng đất, nâu, cam gạch (Thổ khắc Thủy) và xanh lá (Mộc — Thủy sinh Mộc, bị tiết khí).
+Bảng màu theo hướng **mệnh Thủy** (chủ website sinh 1996 — Bính Tý, Giản Hạ Thủy), chọn nhánh **đen – trắng – bạc – ghi sáng**: đen là bản mệnh, trắng và bạc là Kim sinh Thủy. Không dùng vàng đất, nâu, cam gạch (Thổ khắc Thủy), không dùng xanh lá (Mộc — Thủy sinh Mộc, bị tiết khí), và không dùng xanh dương làm màu dẫn.
 
 ```css
-/* Bản mệnh — biển, trời và lòng hang */
---color-primary-50:  #eef7fb;
---color-primary-100: #d7ecf5;
---color-primary-500: #1d7ca8;   /* xanh dương chủ đạo */
---color-primary-700: #145a7a;
---color-primary-900: #0c3a4f;
+/* Bản mệnh — đen và than chì */
+--color-primary-50:  #f2f4f6;
+--color-primary-100: #e3e7ea;
+--color-primary-500: #2b3339;   /* màu chính: nút, chip đang chọn */
+--color-primary-700: #1b2227;
+--color-primary-900: #0d1114;
 
-/* Nước sâu — thay cho xanh rừng cũ */
---color-deep:        #1f5f7d;
---color-abyss:       #0b2e3f;   /* nền khối tối, gần xanh đen */
+--color-deep:        #39454d;   /* ghi đậm, dùng cho chữ phụ nổi bật */
+--color-abyss:       #0d1114;   /* nền khối tối, gần như đen */
 
-/* Tương sinh (Kim) — bạc, ghi sáng; thay cho màu cát */
---color-aqua:        #6fb3d1;   /* nhấn nhẹ: nhãn, chấm thông báo */
---color-silver:      #c9d6de;
---color-silver-50:   #eef3f6;
+/* Tương sinh (Kim) — bạc và ghi sáng */
+--color-silver:      #c3ccd2;
+--color-silver-50:   #f2f4f6;
 
 /* Trung tính */
---color-ink:         #1a2127;   /* chữ chính */
---color-muted:       #5f6d78;   /* chữ phụ */
---color-line:        #e3e8ec;
+--color-ink:         #14181c;   /* chữ chính */
+--color-muted:       #6b7780;   /* chữ phụ */
+--color-line:        #e4e7ea;
 --color-surface:     #ffffff;
---color-surface-alt: #f6f9fb;
+--color-surface-alt: #f7f8f9;
 ```
 
-Cách dùng: xanh dương dẫn dắt toàn trang; xanh đen `--color-abyss` cho các khối tối (văn hóa, Góc học tập, kêu gọi theo dõi Fanpage); bạc và ghi sáng cho nền ảnh giữ chỗ và nhãn phụ; `--color-aqua` dùng rất tiết chế làm điểm nhấn. Nền trắng và xám rất nhạt để ảnh lên màu.
+Cách dùng: nền trắng là chủ đạo, chữ đen, các khối nhấn dùng nền gần đen `--color-abyss` với chữ trắng; bạc dùng cho nền ảnh giữ chỗ, đường viền và nhãn phụ. Toàn trang không có màu rực, nên **hình ảnh trở thành nguồn màu duy nhất** — đúng tinh thần tạp chí. Hệ quả: ảnh phải đẹp và được cắt đúng tỉ lệ, vì không còn màu nền nào đỡ cho nó.
 
-**Lưu ý về độ tương phản:** `--color-aqua` quá nhạt để làm màu chữ trên nền trắng (chỉ đạt khoảng 2:1, dưới chuẩn 4.5:1), nên chỉ dùng làm nền với chữ đậm `#06303f` phía trên, hoặc làm nét trang trí. Màu chữ luôn lấy từ `--color-ink`, `--color-muted`, `--color-primary-700` trở lên.
+**Hai lưu ý khi code:**
+
+1. Không còn màu riêng cho liên kết, nên **mọi liên kết nằm trong đoạn văn phải gạch chân** (`text-decoration: underline`). Nếu chỉ đổi sắc độ xám thì người đọc không phân biệt được đâu là liên kết — đây là lỗi tiếp cận thật, không phải chuyện thẩm mỹ.
+2. Trạng thái trong CMS (Đã xuất bản / Bản nháp / Lên lịch) giờ chỉ khác nhau sắc độ xám. Phải kèm chữ rõ ràng trong nhãn, không được chỉ dựa vào màu để phân biệt.
 
 ### 2.2 Typography
 
