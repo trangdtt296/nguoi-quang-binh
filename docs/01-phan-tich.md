@@ -10,7 +10,17 @@ Ngày lập: 02/11/2026
 
 Website truyền thông – quảng bá cộng đồng, mở rộng từ Fanpage Facebook "Người Quảng Bình".
 
-**Có:** nội dung biên tập (bài viết, điểm đến, văn hóa, ẩm thực, tin tức, cẩm nang, thư viện ảnh), CMS để admin tự đăng bài, SEO, chia sẻ Facebook.
+**Có:** nội dung biên tập (bài viết, điểm đến, văn hóa, ẩm thực, tin tức, cẩm nang, thư viện ảnh), Góc học tập, CMS để admin tự đăng bài, SEO, chia sẻ Facebook.
+
+### Góc học tập (bổ sung 02/11/2026)
+
+Khu vực chia sẻ kiến thức cho cộng đồng: lập trình, tiếng Anh, tiếng Nhật và các lĩnh vực khác. Mỗi khóa là một chuỗi bài học xếp theo thứ tự; mỗi bài là một bài viết, có thể kèm video.
+
+**Định hướng nội dung:** gắn với người Quảng Bình để không lạc khỏi định vị chung của website — học tiếng Anh để làm du lịch, học tiếng Nhật để đi lao động nước ngoài, học lập trình để làm từ xa khỏi phải xa quê. Tên mục trên menu: "Góc học tập".
+
+**Đánh đổi đã biết:** đây là chủ đề khác với du lịch – văn hóa, nên làm loãng tín hiệu chủ đề mà Google đọc được từ website. Giảm thiểu bằng cách: đặt `/goc-hoc-tap` thành một nhánh riêng, không trộn bài học vào mục Tin tức hay Cẩm nang, và viết mô tả khóa học gắn với bối cảnh địa phương.
+
+**Không làm:** tài khoản người học, theo dõi tiến độ, bài kiểm tra, chứng chỉ, thu phí. Người xem vẫn ẩn danh.
 
 **Không có (đã loại khỏi phạm vi theo yêu cầu):** bán tour, giỏ hàng, thanh toán, đặt tour, quản lý đơn hàng, mọi nghiệp vụ thương mại điện tử.
 

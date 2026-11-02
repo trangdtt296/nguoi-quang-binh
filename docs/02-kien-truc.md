@@ -126,6 +126,9 @@ GET  /api/v1/foods                 ?category=&page=&limit=
 GET  /api/v1/foods/:slug
 GET  /api/v1/events                ?upcoming=&page=&limit=
 GET  /api/v1/events/:slug
+GET  /api/v1/courses               ?category=&level=&page=&limit=
+GET  /api/v1/courses/:slug                    (kèm danh sách bài theo thứ tự)
+GET  /api/v1/courses/:slug/:lessonSlug        (bài học + bài trước/sau)
 GET  /api/v1/albums                ?page=&limit=
 GET  /api/v1/albums/:slug
 GET  /api/v1/categories            ?type=
@@ -153,6 +156,9 @@ CRUD   /api/v1/admin/destinations
 CRUD   /api/v1/admin/foods
 CRUD   /api/v1/admin/events
 CRUD   /api/v1/admin/categories
+CRUD   /api/v1/admin/courses
+CRUD   /api/v1/admin/lessons            (bài học: articles có type = 'lesson')
+PATCH  /api/v1/admin/courses/:id/reorder  (sắp xếp lại thứ tự bài)
 CRUD   /api/v1/admin/albums
 CRUD   /api/v1/admin/banners
 CRUD   /api/v1/admin/users          (chỉ super_admin)

@@ -16,6 +16,9 @@
 │   └── /su-kien/:slug              Chi tiết sự kiện
 ├── /cam-nang                       Cẩm nang du lịch
 │   └── /cam-nang/:slug             Chi tiết bài cẩm nang
+├── /goc-hoc-tap                    Góc học tập — danh sách khóa học
+│   ├── /goc-hoc-tap/:courseSlug    Chi tiết khóa học (danh sách bài)
+│   └── /goc-hoc-tap/:courseSlug/:lessonSlug   Bài học (nội dung + video)
 ├── /thu-vien                       Thư viện ảnh & video
 │   └── /thu-vien/:slug             Chi tiết album
 ├── /lien-he                        Liên hệ
@@ -42,6 +45,10 @@ Quy tắc URL: tiếng Việt không dấu, gạch nối, không có đuôi `.ht
 ├── /admin/events                   Sự kiện
 │   ├── /admin/events/new
 │   └── /admin/events/:id/edit
+├── /admin/courses                  Khóa học (Góc học tập)
+│   ├── /admin/courses/new
+│   ├── /admin/courses/:id/edit     sửa khóa + sắp xếp thứ tự bài
+│   └── /admin/courses/:id/lessons/new   soạn bài học (có ô link video)
 ├── /admin/albums                   Thư viện / album
 │   ├── /admin/albums/new
 │   └── /admin/albums/:id/edit
@@ -144,6 +151,11 @@ Danh sách → nút xóa → hộp thoại xác nhận (nêu rõ tên nội dung
 | 12 | Thư viện | Lưới album, lightbox xem ảnh lớn, video nhúng |
 | 13 | Liên hệ | Thông tin, form góp ý, bản đồ, liên kết Fanpage |
 | 14 | Tìm kiếm / 404 | Kết quả gom nhiều loại nội dung; trang lỗi có gợi ý quay về |
+| 15 | Góc học tập | Lọc theo lĩnh vực (lập trình / tiếng Anh / tiếng Nhật…), lưới card khóa học |
+| 16 | Chi tiết khóa học | Mô tả khóa, trình độ, danh sách bài theo thứ tự |
+| 17 | Bài học | Video nhúng, nội dung bài, danh sách bài bên cạnh, nút bài trước / bài sau |
+
+**Tổng công khai: 17 màn hình.**
 
 ### Admin CMS (18 màn hình)
 | # | Màn hình | Ghi chú |
@@ -160,6 +172,7 @@ Danh sách → nút xóa → hộp thoại xác nhận (nêu rõ tên nội dung
 | 10 | Soạn/sửa sự kiện | Ngày bắt đầu/kết thúc, địa điểm |
 | 11 | Danh sách album | |
 | 12 | Soạn/sửa album | Chọn nhiều ảnh, sắp xếp thứ tự |
+| 12b | Khóa học + bài học | Tạo khóa, kéo thả sắp xếp thứ tự bài, soạn bài có ô link video |
 | 13 | Quản lý danh mục | Tab theo loại nội dung, kéo thả đổi thứ tự |
 | 14 | Thư viện media | Lưới ảnh, upload kéo thả, tìm kiếm, xem dung lượng, xóa |
 | 15 | Quản lý banner | Vị trí hiển thị, thứ tự, bật/tắt |
@@ -167,7 +180,7 @@ Danh sách → nút xóa → hộp thoại xác nhận (nêu rõ tên nội dung
 | 17 | Thùng rác | Khôi phục / xóa vĩnh viễn |
 | 18 | Cài đặt + Tài khoản | Thông tin website, SEO mặc định, mạng xã hội; quản lý user |
 
-**Tổng: 32 màn hình.**
+**Tổng: 36 màn hình** (17 công khai + 19 quản trị).
 
 ## 5. Trạng thái giao diện bắt buộc
 

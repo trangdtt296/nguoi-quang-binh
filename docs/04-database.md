@@ -94,12 +94,42 @@ Một bảng dùng chung cho tất cả loại danh mục, phân biệt bằng `
 | seo_description | varchar(320) | NULL |
 | og_image_url | text | NULL |
 
-`article_type` = `news` | `culture` | `guide`
+`article_type` = `news` | `culture` | `guide` | `lesson`
 `content_status` = `draft` | `published` | `scheduled` | `archived`
 
 Lưu nội dung dạng `jsonb` (TipTap) để sửa lại chính xác, kèm `content_html` để backend trả nhanh cho bot và cho trang chi tiết.
 
 **Quy tắc hiển thị công khai:** `status = 'published' AND published_at <= now() AND deleted_at IS NULL`. Bài `scheduled` tự lên sóng khi tới giờ mà không cần job chạy nền — chỉ nhờ điều kiện truy vấn này.
+
+### 3.3b Góc học tập — bổ sung cho `articles` + bảng `learning_courses`
+
+Bài học **dùng chính bảng `articles`** với `type = 'lesson'`, thêm 4 cột:
+
+| Cột | Kiểu | Ghi chú |
+|---|---|---|
+| `course_id` | uuid FK → learning_courses.id, NULL | Bài thuộc khóa nào |
+| `lesson_order` | int, NULL | Thứ tự bài trong khóa (1, 2, 3…) |
+| `video_url` | text, NULL | Link video bài giảng (YouTube nhúng) |
+| `duration_minutes` | int, NULL | Thời lượng, hiện trên card |
+
+UNIQUE `(course_id, lesson_order)` khi `deleted_at IS NULL` — tránh hai bài cùng số thứ tự.
+
+Bảng mới **`learning_courses`** (khóa học / chuỗi bài):
+
+| Cột | Kiểu | Ghi chú |
+|---|---|---|
+| id, title, slug, description, cover_image_url | | như các bảng nội dung khác |
+| `category_id` | uuid FK → categories (`type = 'learning'`) | Lập trình / Tiếng Anh / Tiếng Nhật / Khác |
+| `level` | enum `course_level` | `beginner` \| `intermediate` \| `advanced` |
+| `lesson_count` | int | Tính lại khi thêm/bớt bài, để không phải đếm mỗi lần tải trang |
+| `status`, `published_at`, `view_count`, `is_featured`, `seo_*` | | như `articles` |
+| `created_at`, `updated_at`, `deleted_at` | | |
+
+`category_type` có thêm giá trị `learning`.
+
+**Không có** bảng `enrollments`, `progress` hay tài khoản người học: người xem vẫn ẩn danh, vào đọc bài và xem video, không đăng nhập. Nếu sau này muốn đánh dấu "đã học xong" thì mới cần thêm, và khi đó phải mở hệ thống tài khoản cho người dùng cuối — một thay đổi lớn, nên cân nhắc riêng.
+
+**Video:** chỉ lưu link YouTube trong `video_url`, không tự host. Lý do: Cloudinary gói free không chịu nổi video dài, còn YouTube miễn phí, có sẵn trình phát, tự nén theo đường truyền và tự có phụ đề.
 
 ### 3.4 `destinations` — điểm đến
 | Cột | Kiểu | Ràng buộc |
