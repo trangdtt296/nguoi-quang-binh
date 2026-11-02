@@ -124,19 +124,24 @@ Trang công khai render phía server (lấy dữ liệu trong Server Component) 
 
 ### 2.1 Bảng màu
 
+Bảng màu theo hướng **mệnh Thủy** (chủ website sinh 1996 — Bính Tý, Giản Hạ Thủy): lấy xanh dương và xanh đen làm bản mệnh, trắng – bạc – ghi sáng làm màu tương sinh (Kim sinh Thủy). Bỏ hẳn vàng đất, nâu, cam gạch (Thổ khắc Thủy) và xanh lá (Mộc — Thủy sinh Mộc, bị tiết khí).
+
 ```css
-/* Chủ đạo — biển và trời Quảng Bình */
+/* Bản mệnh — biển, trời và lòng hang */
 --color-primary-50:  #eef7fb;
+--color-primary-100: #d7ecf5;
 --color-primary-500: #1d7ca8;   /* xanh dương chủ đạo */
 --color-primary-700: #145a7a;
 --color-primary-900: #0c3a4f;
 
-/* Phụ — núi rừng Phong Nha */
---color-forest-500:  #3f7d58;
---color-forest-700:  #2c5a3f;
+/* Nước sâu — thay cho xanh rừng cũ */
+--color-deep:        #1f5f7d;
+--color-abyss:       #0b2e3f;   /* nền khối tối, gần xanh đen */
 
-/* Nhấn — cát và nắng miền Trung */
---color-sand-400:    #d9a441;
+/* Tương sinh (Kim) — bạc, ghi sáng; thay cho màu cát */
+--color-aqua:        #6fb3d1;   /* nhấn nhẹ: nhãn, chấm thông báo */
+--color-silver:      #c9d6de;
+--color-silver-50:   #eef3f6;
 
 /* Trung tính */
 --color-ink:         #1a2127;   /* chữ chính */
@@ -146,7 +151,9 @@ Trang công khai render phía server (lấy dữ liệu trong Server Component) 
 --color-surface-alt: #f6f9fb;
 ```
 
-Xanh dương dẫn dắt (biển, hang động), xanh lá cho khối văn hóa – thiên nhiên, màu cát dùng rất tiết chế làm điểm nhấn (nút, nhãn nổi bật). Nền trắng và xám rất nhạt để ảnh lên màu.
+Cách dùng: xanh dương dẫn dắt toàn trang; xanh đen `--color-abyss` cho các khối tối (văn hóa, Góc học tập, kêu gọi theo dõi Fanpage); bạc và ghi sáng cho nền ảnh giữ chỗ và nhãn phụ; `--color-aqua` dùng rất tiết chế làm điểm nhấn. Nền trắng và xám rất nhạt để ảnh lên màu.
+
+**Lưu ý về độ tương phản:** `--color-aqua` quá nhạt để làm màu chữ trên nền trắng (chỉ đạt khoảng 2:1, dưới chuẩn 4.5:1), nên chỉ dùng làm nền với chữ đậm `#06303f` phía trên, hoặc làm nét trang trí. Màu chữ luôn lấy từ `--color-ink`, `--color-muted`, `--color-primary-700` trở lên.
 
 ### 2.2 Typography
 
