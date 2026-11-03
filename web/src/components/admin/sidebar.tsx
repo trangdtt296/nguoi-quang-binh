@@ -89,7 +89,7 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
         </span>
       </Link>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="scrollbar-hidden flex-1 overflow-y-auto pb-4">
         {groups.map((group) => {
           const visible = group.items.filter((item) => {
             if (item.superAdminOnly) return isSuperAdmin;

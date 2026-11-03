@@ -83,3 +83,19 @@
     padding-inline: 1.5rem;
   }
 }
+
+/*
+  Ẩn thanh cuộn nhưng vẫn cuộn được bằng chuột, bàn phím và vuốt.
+  Dùng cho sidebar quản trị: thanh cuộn sáng màu nổi lên giữa nền tối
+  trông rất chướng, mà danh sách menu thì ai cũng biết là cuộn được.
+  Không dùng cho vùng nội dung chính — ở đó người đọc cần thấy mình đang
+  ở đâu trong trang.
+*/
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
