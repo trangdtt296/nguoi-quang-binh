@@ -154,10 +154,18 @@ async function request<T>(
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
+    /*
+      fetch ném cùng một lỗi cho nhiều nguyên nhân khác nhau — server không
+      chạy, sai địa chỉ, hoặc bị chặn vì khác origin — nên không đoán được
+      chính xác. Nêu cả ba khả năng kèm địa chỉ đang gọi để người dùng tự
+      đối chiếu, thay vì chỉ nói "không kết nối được".
+    */
     throw new ApiError(
       0,
       "NETWORK_ERROR",
-      "Không kết nối được tới máy chủ. Kiểm tra xem backend đã chạy chưa.",
+      `Không gọi được API tại ${API_URL}. Kiểm tra: backend đã chạy chưa, ` +
+        `địa chỉ trong NEXT_PUBLIC_API_URL có đúng không, và mở Console của ` +
+        `trình duyệt xem có bị chặn vì khác origin (CORS) không.`,
     );
   }
 

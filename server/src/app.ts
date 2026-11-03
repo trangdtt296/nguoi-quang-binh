@@ -22,8 +22,21 @@ export function createApp() {
     cors({
       origin: (origin, callback) => {
         // Không có origin: gọi từ Postman, curl hoặc server-side render.
-        if (!origin || env.corsOrigins.includes(origin)) callback(null, true);
-        else callback(new Error("Origin không được phép truy cập API này"));
+        if (!origin || env.corsOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        // Lúc phát triển, cho phép mọi cổng trên localhost. Next.js tự nhảy
+        // sang 3001 khi 3000 bị chiếm, và khi đó trình duyệt chặn request
+        // với một lỗi rất khó đoán ra nguyên nhân. Ở production thì chỉ
+        // đúng danh sách trong CORS_ORIGIN mới được vào.
+        if (!env.isProduction && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error(`Origin ${origin} không được phép truy cập API này`));
       },
       credentials: true,
     }),
