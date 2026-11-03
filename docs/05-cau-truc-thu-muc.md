@@ -120,6 +120,20 @@ Trang công khai render phía server (lấy dữ liệu trong Server Component) 
 
 **Nguyên tắc:** mỗi file một nhiệm vụ, file component không quá ~200 dòng, logic gọi API nằm trong `hooks/` chứ không viết thẳng trong page, mọi thành phần lặp lại đều nằm trong `components/ui`.
 
+### Quy ước đặt tên (chốt 03/11/2026)
+
+Tên biến, hàm, component, file và `id` trong HTML viết bằng **tiếng Anh**.
+
+Hai ngoại lệ có chủ đích:
+
+1. **Thư mục trong `web/src/app/`** giữ tiếng Việt: `diem-den`, `am-thuc`, `van-hoa`, `tin-tuc`, `cam-nang`, `goc-hoc-tap`, `thu-vien`, `gioi-thieu`, `lien-he`, `tim-kiem`.
+
+   Lý do: trong Next.js App Router, tên thư mục **chính là** đường dẫn URL, không tách rời được. `/diem-den` thân thiện với người tìm Google bằng tiếng Việt hơn `/destinations`. Đây là đánh đổi có ý thức giữa tính nhất quán của code và hiệu quả SEO — ưu tiên SEO vì đó là lý do website này tồn tại.
+
+2. **Chú thích (comment)** viết bằng tiếng Việt, để chủ dự án và người hướng dẫn đọc được.
+
+Nội dung hiển thị cho người đọc đương nhiên là tiếng Việt.
+
 ## 2. Hệ thống thiết kế
 
 ### 2.1 Bảng màu
