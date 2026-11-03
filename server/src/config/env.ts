@@ -3,6 +3,8 @@
 // nên khi chạy `npm run dev` mà thiếu dòng này thì server chết ngay lúc
 // khởi động vì tưởng là thiếu biến môi trường.
 import "dotenv/config";
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
 
 /**
@@ -39,7 +41,18 @@ if (!parsed.success) {
   const issues = parsed.error.issues
     .map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
     .join("\n");
-  throw new Error(`Biến môi trường không hợp lệ:\n${issues}`);
+
+  // Nguyên nhân hay gặp nhất không phải là điền sai, mà là không có file
+  // .env — nó nằm trong .gitignore nên clone về sẽ không có sẵn. Nói thẳng
+  // ra để người chạy lần đầu không phải đoán.
+  const envPath = path.resolve(process.cwd(), ".env");
+  const hint = fs.existsSync(envPath)
+    ? `Đã tìm thấy file .env tại ${envPath}, nhưng các biến trên vẫn thiếu hoặc không hợp lệ.`
+    : `Không tìm thấy file .env tại ${envPath}.\n` +
+      `Tạo nó bằng cách chép từ mẫu: cp .env.example .env (Windows: copy .env.example .env)\n` +
+      `rồi điền các giá trị theo hướng dẫn trong README.`;
+
+  throw new Error(`Biến môi trường không hợp lệ:\n${issues}\n\n${hint}`);
 }
 
 export const env = {
