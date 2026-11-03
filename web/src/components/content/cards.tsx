@@ -9,6 +9,7 @@ import type {
 import { ContentImage } from "@/components/shared/content-image";
 import { Tag } from "@/components/ui";
 import { formatDate } from "@/lib/format";
+import { articleHref } from "@/lib/routes";
 
 const cardClass =
   "group block overflow-hidden rounded-[12px] border border-line bg-surface transition-all duration-200 hover:-translate-y-[3px] hover:shadow-[0_10px_28px_rgba(13,17,20,0.1)]";
@@ -44,12 +45,6 @@ export function DestinationCard({ item }: { item: Destination }) {
     </Link>
   );
 }
-
-const articleHref = (item: Article) => {
-  if (item.type === "culture") return `/van-hoa/${item.slug}`;
-  if (item.type === "guide") return `/cam-nang/${item.slug}`;
-  return `/tin-tuc/${item.slug}`;
-};
 
 export function ArticleCard({ item }: { item: Article }) {
   return (

@@ -78,10 +78,8 @@
   margin-inline: auto;
   max-width: 1200px;
   padding-inline: 1rem;
-}
 
-@media (min-width: 768px) {
-  .container-page {
+  @media (min-width: 768px) {
     padding-inline: 1.5rem;
   }
 }

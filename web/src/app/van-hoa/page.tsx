@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { UpcomingPage } from "@/components/shared/upcoming-page";
+import { ArticleListPage } from "@/components/content/article-list";
+import { cultureCategories } from "@/lib/mock/categories";
 
 const title = "Văn hóa & con người";
-const description = "Lễ hội, nghề truyền thống và những câu chuyện về người Quảng Bình.";
+const description =
+  "Lễ hội, nghề truyền thống và những câu chuyện về người Quảng Bình — kể bằng giọng của chính người trong cuộc.";
 
 export const metadata: Metadata = {
   title,
@@ -10,12 +12,20 @@ export const metadata: Metadata = {
   alternates: { canonical: "/van-hoa" },
 };
 
-export default function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
-    <UpcomingPage
+    <ArticleListPage
+      type="culture"
+      basePath="/van-hoa"
       title={title}
-      breadcrumbLabel={"Văn hóa"}
       description={description}
+      breadcrumbLabel="Văn hóa"
+      categories={cultureCategories}
+      searchParams={await searchParams}
     />
   );
 }

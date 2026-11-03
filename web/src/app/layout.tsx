@@ -51,13 +51,13 @@ export default async function RootLayout({
     <html lang="vi" className={`${beVietnam.variable} ${lora.variable}`}>
       <body>
         <a
-          href="#noi-dung"
+          href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-ink focus:px-4 focus:py-2 focus:text-white"
         >
           Bỏ qua phần đầu trang
         </a>
         <Header facebookPageUrl={settings.facebookPageUrl} />
-        <main id="noi-dung">{children}</main>
+        <main id="main-content">{children}</main>
         <Footer settings={settings} />
       </body>
     </html>

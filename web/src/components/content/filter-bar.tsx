@@ -67,7 +67,7 @@ export function FilterBar({
             role="search"
           >
             <label
-              htmlFor="o-tim-kiem"
+              htmlFor="search-input"
               className="mb-1.5 block text-[12.5px] font-semibold uppercase tracking-[0.06em] text-muted"
             >
               Tìm kiếm
@@ -75,7 +75,7 @@ export function FilterBar({
             <div className="flex min-h-12 items-center gap-2.5 rounded-[8px] border border-line bg-surface px-3.5 focus-within:border-ink">
               <Search size={17} className="shrink-0 text-muted" aria-hidden="true" />
               <input
-                id="o-tim-kiem"
+                id="search-input"
                 type="search"
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
@@ -89,7 +89,7 @@ export function FilterBar({
         {groups.map((group) => (
           <SelectField
             key={group.param}
-            id={`loc-${group.param}`}
+            id={`filter-${group.param}`}
             label={group.label}
             value={params.get(group.param) ?? ""}
             onChange={(value) => applyParam(group.param, value || null)}
@@ -99,7 +99,7 @@ export function FilterBar({
 
         {sortOptions ? (
           <SelectField
-            id="loc-sap-xep"
+            id="filter-sort"
             label="Sắp xếp"
             value={params.get("sort") ?? sortOptions[0].value}
             onChange={(value) => applyParam("sort", value)}

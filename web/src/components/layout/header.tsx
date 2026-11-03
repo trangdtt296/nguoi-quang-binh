@@ -67,7 +67,7 @@ export function Header({ facebookPageUrl }: { facebookPageUrl: string }) {
             type="button"
             onClick={() => setOpen((value) => !value)}
             aria-expanded={open}
-            aria-controls="menu-chinh"
+            aria-controls="main-menu"
             className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[8px] border border-line text-ink lg:hidden"
           >
             {open ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
@@ -77,7 +77,7 @@ export function Header({ facebookPageUrl }: { facebookPageUrl: string }) {
       </div>
 
       {open ? (
-        <div id="menu-chinh" className="border-t border-line bg-white lg:hidden">
+        <div id="main-menu" className="border-t border-line bg-white lg:hidden">
           <nav aria-label="Điều hướng chính" className="container-page flex flex-col py-2">
             {mainNav.map((item) => (
               <Link

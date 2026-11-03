@@ -14,7 +14,7 @@ import {
   getArticles,
   getCourses,
   getFeaturedDestinations,
-  getFoods,
+  getFeaturedFoods,
   getSiteSettings,
 } from "@/lib/queries";
 import { formatDate } from "@/lib/format";
@@ -49,7 +49,7 @@ export default async function HomePage() {
       getFeaturedDestinations(6),
       getArticles({ type: "culture", limit: 3 }),
       getArticles({ type: "news", limit: 5 }),
-      getFoods(4),
+      getFeaturedFoods(4),
       getCourses(),
       getAlbums(2),
     ]);

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { UpcomingPage } from "@/components/shared/upcoming-page";
+import { ArticleListPage } from "@/components/content/article-list";
+import { articleCategories } from "@/lib/mock/categories";
 
 const title = "Tin tức & sự kiện";
-const description = "Tin tức, hoạt động du lịch và sự kiện địa phương.";
+const description =
+  "Tin tức, hoạt động du lịch, sự kiện và chuyện thường ngày ở Quảng Bình.";
 
 export const metadata: Metadata = {
   title,
@@ -10,12 +12,20 @@ export const metadata: Metadata = {
   alternates: { canonical: "/tin-tuc" },
 };
 
-export default function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
-    <UpcomingPage
+    <ArticleListPage
+      type="news"
+      basePath="/tin-tuc"
       title={title}
-      breadcrumbLabel={"Tin tức"}
       description={description}
+      breadcrumbLabel="Tin tức"
+      categories={articleCategories}
+      searchParams={await searchParams}
     />
   );
 }

@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
-import { UpcomingPage } from "@/components/shared/upcoming-page";
+import { Suspense } from "react";
+import { Breadcrumb, ButtonLink, EmptyState, Skeleton } from "@/components/ui";
+import { CourseCard } from "@/components/content/cards";
+import { FilterBar } from "@/components/content/filter-bar";
+import { learningCategories } from "@/lib/mock/categories";
+import { getCourses } from "@/lib/queries";
+import { formatNumber } from "@/lib/format";
 
 const title = "Góc học tập";
-const description = "Các khóa học miễn phí: lập trình, tiếng Anh, tiếng Nhật và kỹ năng mềm.";
+const description =
+  "Học tiếng Anh để làm du lịch, học tiếng Nhật để đi lao động, học lập trình để làm từ xa mà không phải xa quê. Các khóa đều miễn phí, không cần đăng ký.";
 
 export const metadata: Metadata = {
   title,
@@ -10,12 +17,76 @@ export const metadata: Metadata = {
   alternates: { canonical: "/goc-hoc-tap" },
 };
 
-export default function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const raw = params.category;
+  const category = Array.isArray(raw) ? raw[0] : raw;
+
+  const courses = await getCourses(category);
+
   return (
-    <UpcomingPage
-      title={title}
-      breadcrumbLabel={"Góc học tập"}
-      description={description}
-    />
+    <div className="bg-surface-alt pb-20">
+      <section className="bg-abyss text-white">
+        <div className="container-page py-14 md:py-16">
+          <Breadcrumb
+            items={[{ label: "Trang chủ", href: "/" }, { label: "Góc học tập" }]}
+          />
+          <h1 className="mt-5 font-serif text-[34px] font-semibold leading-tight md:text-[44px]">
+            {title}
+          </h1>
+          <p className="mt-4 max-w-[60ch] text-[17.5px] leading-relaxed text-silver">
+            {description}
+          </p>
+        </div>
+      </section>
+
+      <div className="container-page pt-8">
+        <Suspense fallback={<Skeleton className="h-24" />}>
+          <FilterBar
+            basePath="/goc-hoc-tap"
+            groups={[
+              {
+                param: "category",
+                label: "Lĩnh vực",
+                options: learningCategories.map((c) => ({
+                  label: c.name,
+                  value: c.slug,
+                })),
+              },
+            ]}
+          />
+        </Suspense>
+      </div>
+
+      <div className="container-page mt-7">
+        <p className="text-[14.5px] text-muted" aria-live="polite">
+          Có <strong className="text-ink">{formatNumber(courses.length)}</strong> khóa học
+        </p>
+      </div>
+
+      <div className="container-page mt-5">
+        {courses.length ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {courses.map((course) => (
+              <CourseCard key={course.id} item={course} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="Chưa có khóa học nào trong lĩnh vực này"
+            description="Các khóa mới được thêm dần. Bạn xem thử lĩnh vực khác nhé."
+            action={
+              <ButtonLink href="/goc-hoc-tap" variant="ghost">
+                Xem tất cả khóa học
+              </ButtonLink>
+            }
+          />
+        )}
+      </div>
+    </div>
   );
 }

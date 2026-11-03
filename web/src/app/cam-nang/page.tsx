@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { UpcomingPage } from "@/components/shared/upcoming-page";
+import { ArticleListPage } from "@/components/content/article-list";
+import { guideCategories } from "@/lib/mock/categories";
 
 const title = "Cẩm nang du lịch";
-const description = "Thời điểm đi, cách di chuyển, chỗ ở và lịch trình gợi ý.";
+const description =
+  "Thời điểm nên đi, cách di chuyển, chỗ ở và lịch trình gợi ý — những thứ cần biết trước khi lên đường.";
 
 export const metadata: Metadata = {
   title,
@@ -10,12 +12,20 @@ export const metadata: Metadata = {
   alternates: { canonical: "/cam-nang" },
 };
 
-export default function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
-    <UpcomingPage
+    <ArticleListPage
+      type="guide"
+      basePath="/cam-nang"
       title={title}
-      breadcrumbLabel={"Cẩm nang"}
       description={description}
+      breadcrumbLabel="Cẩm nang"
+      categories={guideCategories}
+      searchParams={await searchParams}
     />
   );
 }
