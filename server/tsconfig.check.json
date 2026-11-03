@@ -6,7 +6,10 @@
   // nếu không thì lỗi trong đó chỉ lộ ra lúc chạy thật.
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    // Bỏ rootDir của bản gốc: nó chỉ tới src/, nên prisma/ nằm ngoài và
+    // TypeScript sẽ báo "not under rootDir". Không build nên không cần.
+    "rootDir": "."
   },
   "include": ["src/**/*.ts", "prisma/**/*.ts"]
 }
