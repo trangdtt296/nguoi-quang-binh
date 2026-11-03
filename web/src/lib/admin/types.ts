@@ -39,6 +39,29 @@ export interface AdminArticle {
   deletedAt: string | null;
 }
 
+export interface AdminMedia {
+  id: string;
+  url: string;
+  thumbnailUrl: string | null;
+  type: "image" | "video" | "embed";
+  fileName: string | null;
+  mimeType: string | null;
+  /** API trả về dạng chuỗi vì BigInt không serialize được sang JSON. */
+  sizeBytes: string | null;
+  width: number | null;
+  height: number | null;
+  altText: string | null;
+  caption: string | null;
+  folder: string | null;
+  uploadedBy: { id: string; fullName: string } | null;
+  createdAt: string;
+}
+
+export interface MediaListResponse {
+  items: AdminMedia[];
+  totalBytes: string | number;
+}
+
 /** Dữ liệu gửi lên khi tạo hoặc sửa bài viết. */
 export interface ArticleInput {
   title: string;

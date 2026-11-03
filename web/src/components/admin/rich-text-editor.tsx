@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -20,7 +20,7 @@ import {
   Undo2,
   Redo2,
 } from "lucide-react";
-import { api } from "@/lib/admin/api-client";
+import { MediaPicker } from "./media-picker";
 
 /**
  * Trình soạn thảo nội dung.
@@ -32,12 +32,12 @@ import { api } from "@/lib/admin/api-client";
 export function RichTextEditor({
   value,
   onChange,
-  onUploadError,
 }: {
   value: string;
   onChange: (html: string) => void;
-  onUploadError?: (message: string) => void;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -84,28 +84,13 @@ export function RichTextEditor({
     editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
   }, [editor]);
 
-  const addImage = useCallback(async () => {
-    if (!editor) return;
-
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      try {
-        const media = await api.upload(file);
-        editor.chain().focus().setImage({ src: media.url, alt: file.name }).run();
-      } catch (error) {
-        onUploadError?.(
-          error instanceof Error ? error.message : "Không tải được ảnh lên",
-        );
-      }
-    };
-
-    input.click();
-  }, [editor, onUploadError]);
+  const insertImage = useCallback(
+    (src: string, alt: string) => {
+      editor?.chain().focus().setImage({ src, alt }).run();
+      setPickerOpen(false);
+    },
+    [editor],
+  );
 
   if (!editor) {
     return (
@@ -192,7 +177,7 @@ export function RichTextEditor({
           editor={editor}
           label="Chèn ảnh"
           icon={ImagePlus}
-          onClick={addImage}
+          onClick={() => setPickerOpen(true)}
         />
 
         <Divider />
@@ -214,6 +199,14 @@ export function RichTextEditor({
       </div>
 
       <EditorContent editor={editor} />
+
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(media) =>
+          insertImage(media.url, media.altText ?? media.fileName ?? "Ảnh minh họa")
+        }
+      />
     </div>
   );
 }

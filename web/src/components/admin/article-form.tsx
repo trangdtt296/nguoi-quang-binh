@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import clsx from "clsx";
-import { ArrowLeft, ExternalLink, Upload, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, ImagePlus, X } from "lucide-react";
 import {
   AdminButton,
   Field,
@@ -14,6 +14,7 @@ import {
   useToast,
 } from "@/components/admin/ui";
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
+import { MediaPicker } from "@/components/admin/media-picker";
 import { api, ApiError } from "@/lib/admin/api-client";
 import { useAuth } from "@/lib/admin/auth-context";
 import {
@@ -97,7 +98,7 @@ export function ArticleForm({ article }: { article?: AdminArticle }) {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   // Người dùng đã tự sửa slug thì không tự sinh lại nữa.
   const [slugTouched, setSlugTouched] = useState(Boolean(article));
 
@@ -124,24 +125,6 @@ export function ArticleForm({ article }: { article?: AdminArticle }) {
       active = false;
     };
   }, [form.type]);
-
-  const uploadCover = useCallback(
-    async (file: File) => {
-      setUploading(true);
-      try {
-        const media = await api.upload(file, file.name);
-        setField("coverImageUrl", media.url);
-        showSuccess("Đã tải ảnh bìa lên");
-      } catch (error) {
-        showError(
-          error instanceof ApiError ? error.message : "Không tải được ảnh lên",
-        );
-      } finally {
-        setUploading(false);
-      }
-    },
-    [showError, showSuccess],
-  );
 
   const validate = (): boolean => {
     const found: Partial<Record<keyof FormState, string>> = {};
@@ -337,7 +320,6 @@ export function ArticleForm({ article }: { article?: AdminArticle }) {
               <RichTextEditor
                 value={form.contentHtml}
                 onChange={(html) => setField("contentHtml", html)}
-                onUploadError={showError}
               />
             </div>
           </div>
@@ -364,27 +346,25 @@ export function ArticleForm({ article }: { article?: AdminArticle }) {
                   </button>
                 </div>
               ) : (
-                <label
-                  className={clsx(
-                    "flex aspect-video cursor-pointer flex-col items-center justify-center gap-2 rounded-[8px] border border-dashed border-silver text-muted transition-colors hover:border-ink hover:text-ink",
-                    uploading && "pointer-events-none opacity-60",
-                  )}
+                <button
+                  type="button"
+                  onClick={() => setCoverPickerOpen(true)}
+                  className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-[8px] border border-dashed border-silver text-muted transition-colors hover:border-ink hover:text-ink"
                 >
-                  <Upload size={20} aria-hidden="true" />
-                  <span className="text-[13.5px]">
-                    {uploading ? "Đang tải lên" : "Chọn ảnh"}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void uploadCover(file);
-                    }}
-                  />
-                </label>
+                  <ImagePlus size={20} aria-hidden="true" />
+                  <span className="text-[13.5px]">Chọn ảnh bìa</span>
+                </button>
               )}
+
+              {form.coverImageUrl ? (
+                <AdminButton
+                  variant="ghost"
+                  className="mt-3 w-full"
+                  onClick={() => setCoverPickerOpen(true)}
+                >
+                  Đổi ảnh khác
+                </AdminButton>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-5 rounded-[12px] border border-line bg-surface p-5">
@@ -549,6 +529,16 @@ export function ArticleForm({ article }: { article?: AdminArticle }) {
           ) : null}
         </div>
       ) : null}
+
+      <MediaPicker
+        open={coverPickerOpen}
+        onClose={() => setCoverPickerOpen(false)}
+        onSelect={(media) => {
+          setField("coverImageUrl", media.url);
+          setCoverPickerOpen(false);
+          showSuccess("Đã chọn ảnh bìa");
+        }}
+      />
 
       {toast ? (
         <Toast kind={toast.kind} message={toast.message} onDismiss={dismiss} />
