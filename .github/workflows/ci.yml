@@ -1,0 +1,69 @@
+name: Kiểm tra code
+
+# Chạy mỗi lần đẩy code lên hoặc mở pull request.
+#
+# Mục đích: bắt lỗi biên dịch ngay trên GitHub, vì môi trường phát triển
+# không phải lúc nào cũng cài được thư viện. Không cần database thật —
+# chỉ kiểm tra kiểu dữ liệu và dựng bản build.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  web:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cài thư viện
+        run: npm install --no-audit --no-fund
+
+      - name: Kiểm tra kiểu TypeScript
+        run: npm run typecheck
+
+      - name: Dựng bản build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: https://nguoi-quang-binh.vercel.app
+
+  server:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cài thư viện
+        run: npm install --no-audit --no-fund
+
+      - name: Sinh Prisma Client
+        # Chỉ đọc schema.prisma, không cần kết nối database.
+        run: npx prisma generate
+
+      - name: Kiểm tra schema Prisma
+        run: npx prisma validate
+        env:
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db
+
+      - name: Kiểm tra kiểu TypeScript
+        run: npm run typecheck
+
+      - name: Dựng bản build
+        run: npm run build
