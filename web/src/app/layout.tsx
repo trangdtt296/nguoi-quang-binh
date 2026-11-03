@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro, Lora } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
-import { getSiteSettings } from "@/lib/queries";
 
 const beVietnam = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -42,24 +39,18 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-export default async function RootLayout({
+/**
+ * Layout gốc: chỉ lo khung HTML và font.
+ *
+ * Header và Footer nằm ở (public)/layout.tsx, vì khu quản trị có khung
+ * riêng và không dùng chúng.
+ */
+export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const settings = await getSiteSettings();
-
   return (
     <html lang="vi" className={`${beVietnam.variable} ${lora.variable}`}>
-      <body>
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-ink focus:px-4 focus:py-2 focus:text-white"
-        >
-          Bỏ qua phần đầu trang
-        </a>
-        <Header facebookPageUrl={settings.facebookPageUrl} />
-        <main id="main-content">{children}</main>
-        <Footer settings={settings} />
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
