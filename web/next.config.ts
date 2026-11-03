@@ -1,11 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Huy hiệu dev của Next.js mặc định nằm góc dưới bên trái, đúng chỗ
-  // sidebar quản trị. Dời sang phải cho khỏi che menu.
-  devIndicators: {
-    position: "bottom-right",
-  },
+  // Tắt huy hiệu dev của Next.js: nó nằm góc dưới bên trái, đúng chỗ
+  // sidebar quản trị. Huy hiệu này vốn chỉ hiện lúc chạy dev, không bao
+  // giờ xuất hiện trên bản đã deploy.
+  devIndicators: false,
   images: {
     remotePatterns: [
       // Ảnh do CMS tải lên, phục vụ qua Cloudinary
