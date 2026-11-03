@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Search, X } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 
 export interface FilterGroup {
   /** Tên tham số trên URL, ví dụ "category". */
@@ -143,18 +143,29 @@ function SelectField({
       >
         {label}
       </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="min-h-12 w-full rounded-[8px] border border-line bg-surface px-3 text-[15px] text-ink focus:border-ink focus:outline-none"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      {/*
+        Ẩn mũi tên mặc định của trình duyệt và tự vẽ lại: mỗi hệ điều hành
+        vẽ một kiểu khác nhau, và không chỉnh được khoảng cách tới mép.
+      */}
+      <div className="relative">
+        <select
+          id={id}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="min-h-12 w-full appearance-none rounded-[8px] border border-line bg-surface pl-3.5 pr-11 text-[15px] text-ink focus:border-ink focus:outline-none"
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          size={17}
+          aria-hidden="true"
+          className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted"
+        />
+      </div>
     </div>
   );
 }
