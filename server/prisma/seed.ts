@@ -6,6 +6,7 @@
  *
  * Tài khoản super admin lấy từ biến môi trường, không hardcode trong file này.
  */
+import "dotenv/config";
 import { PrismaClient, type CategoryType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 

@@ -1,0 +1,12 @@
+{
+  // Dùng riêng cho `npm run typecheck`.
+  //
+  // tsconfig.json chỉ gồm src/ vì nó dùng để biên dịch ra dist/ — thư mục
+  // prisma/ không được build. Nhưng prisma/seed.ts vẫn cần kiểm tra kiểu,
+  // nếu không thì lỗi trong đó chỉ lộ ra lúc chạy thật.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "prisma/**/*.ts"]
+}

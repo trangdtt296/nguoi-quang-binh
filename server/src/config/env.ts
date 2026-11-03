@@ -1,3 +1,8 @@
+// Nạp file .env trước khi đọc process.env.
+// Node không tự đọc .env, và tsx cũng không — chỉ Prisma CLI mới tự nạp,
+// nên khi chạy `npm run dev` mà thiếu dòng này thì server chết ngay lúc
+// khởi động vì tưởng là thiếu biến môi trường.
+import "dotenv/config";
 import { z } from "zod";
 
 /**
