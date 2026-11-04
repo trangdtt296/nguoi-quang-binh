@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import type { ArticleType, Category } from "@/types/content";
+import type { ArticleType } from "@/types/content";
 import { Breadcrumb, ButtonLink, EmptyState, Skeleton } from "@/components/ui";
 import { ArticleCard } from "@/components/content/cards";
 import { FilterBar } from "@/components/content/filter-bar";
 import { Pagination } from "@/components/shared/pagination";
-import { DEFAULT_PAGE_SIZE, getArticles } from "@/lib/queries";
+import { DEFAULT_PAGE_SIZE, getArticles, getCategories } from "@/lib/queries";
 import { formatNumber } from "@/lib/format";
 
 /**
@@ -19,7 +19,7 @@ export async function ArticleListPage({
   title,
   description,
   breadcrumbLabel,
-  categories,
+  categoryType,
   searchParams,
 }: {
   type: ArticleType;
@@ -27,7 +27,8 @@ export async function ArticleListPage({
   title: string;
   description: string;
   breadcrumbLabel: string;
-  categories: Category[];
+  /** Loại danh mục để lấy từ API — không phải lúc nào cũng trùng `type`. */
+  categoryType: string;
   searchParams: Record<string, string | string[] | undefined>;
 }) {
   const first = (value: string | string[] | undefined) =>
@@ -37,13 +38,10 @@ export async function ArticleListPage({
   const q = first(searchParams.q);
   const page = Number(first(searchParams.page) ?? 1);
 
-  const result = await getArticles({
-    type,
-    category,
-    q,
-    page,
-    limit: DEFAULT_PAGE_SIZE,
-  });
+  const [result, categories] = await Promise.all([
+    getArticles({ type, category, q, page, limit: DEFAULT_PAGE_SIZE }),
+    getCategories(categoryType),
+  ]);
 
   const buildHref = (nextPage: number) => {
     const next = new URLSearchParams();

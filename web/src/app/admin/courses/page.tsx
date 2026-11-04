@@ -3,7 +3,6 @@
 import { AdminShell } from "@/components/admin/shell";
 import { ResourceList, type Column } from "@/components/admin/resource-list";
 import { StatusBadge } from "@/components/admin/ui";
-import { learningCategories } from "@/lib/filters";
 import type { AdminCourse } from "@/lib/admin/types";
 import { formatDate, formatNumber } from "@/lib/format";
 
@@ -49,16 +48,13 @@ export default function CoursesPage() {
         endpoint="/admin/courses"
         basePath="/admin/courses"
         columns={columns}
+        categoryType="learning"
+        categoryLabel="Tất cả lĩnh vực"
         searchPlaceholder="Tìm theo tên khóa học"
         createLabel="Thêm khóa học"
         emptyTitle="Chưa có khóa học nào khớp"
         getLabel={(item) => item.title}
         filters={[
-          {
-            param: "category",
-            label: "Tất cả lĩnh vực",
-            options: learningCategories.map((c) => ({ label: c.name, value: c.slug })),
-          },
           {
             param: "status",
             label: "Tất cả trạng thái",

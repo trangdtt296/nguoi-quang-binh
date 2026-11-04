@@ -55,6 +55,8 @@ export function ResourceList<T extends ResourceRecord>({
   basePath,
   columns,
   filters = [],
+  categoryType,
+  categoryLabel = "Tất cả danh mục",
   searchPlaceholder = "Tìm kiếm",
   createLabel = "Thêm mới",
   getLabel,
@@ -69,6 +71,14 @@ export function ResourceList<T extends ResourceRecord>({
   basePath: string;
   columns: Column<T>[];
   filters?: ListFilter[];
+  /**
+   * Có giá trị thì thêm một ô lọc danh mục, lấy danh sách từ API.
+   *
+   * Không khai danh mục sẵn trong code: quản trị viên thêm danh mục trong
+   * CMS thì ô lọc phải có ngay, không phải chờ sửa code.
+   */
+  categoryType?: string;
+  categoryLabel?: string;
   searchPlaceholder?: string;
   createLabel?: string;
   /** Tên bản ghi, dùng trong thông báo và hộp xác nhận. */
@@ -91,6 +101,39 @@ export function ResourceList<T extends ResourceRecord>({
 
   const [deleting, setDeleting] = useState<T | null>(null);
   const [deletePending, setDeletePending] = useState(false);
+
+  const [categoryOptions, setCategoryOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+
+  useEffect(() => {
+    if (!categoryType) return;
+    let active = true;
+
+    api
+      .get<{ name: string; slug: string }[]>(`/categories?type=${categoryType}`)
+      .then(({ data }) => {
+        if (active) {
+          setCategoryOptions(data.map((c) => ({ label: c.name, value: c.slug })));
+        }
+      })
+      // Lấy danh mục hỏng thì chỉ thiếu một ô lọc, danh sách vẫn dùng được.
+      .catch(() => {
+        if (active) setCategoryOptions([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [categoryType]);
+
+  const allFilters: ListFilter[] =
+    categoryType && categoryOptions.length > 0
+      ? [
+          { param: "category", label: categoryLabel, options: categoryOptions },
+          ...filters,
+        ]
+      : filters;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -180,7 +223,7 @@ export function ResourceList<T extends ResourceRecord>({
           </div>
         </form>
 
-        {filters.map((filter) => (
+        {allFilters.map((filter) => (
           <div key={filter.param} className="min-w-[160px] flex-1">
             <label htmlFor={`filter-${filter.param}`} className="sr-only">
               {filter.label}

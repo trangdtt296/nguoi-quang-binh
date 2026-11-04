@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { ArticleListPage } from "@/components/content/article-list";
-import { guideCategories } from "@/lib/filters";
 
 const title = "Cẩm nang du lịch";
 const description =
@@ -24,7 +23,7 @@ export default async function Page({
       title={title}
       description={description}
       breadcrumbLabel="Cẩm nang"
-      categories={guideCategories}
+      categoryType="guide"
       searchParams={await searchParams}
     />
   );

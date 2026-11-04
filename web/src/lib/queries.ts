@@ -12,6 +12,7 @@ import type {
   Album,
   Article,
   ArticleType,
+  Category,
   Destination,
   EventItem,
   Food,
@@ -25,6 +26,7 @@ import { apiGet, type ApiMeta } from "./api";
 import {
   toAlbum,
   toArticle,
+  toCategoryRequired,
   toCourse,
   toDestination,
   toEvent,
@@ -173,6 +175,24 @@ export async function getFeaturedFoods(limit = 4): Promise<Food[]> {
 export async function getFoodBySlug(slug: string): Promise<Food | null> {
   const result = await apiGet<any>(`/foods/${slug}`);
   return result ? toFood(result.data) : null;
+}
+
+/* ---------- Danh mục ---------- */
+
+/**
+ * Danh mục của một loại nội dung, lấy từ API.
+ *
+ * Trước đây danh sách này nằm cứng trong code nên thêm danh mục trong CMS
+ * thì ngoài web không thấy. Lấy từ API để hai bên luôn khớp. API chỉ trả về
+ * danh mục đang bật, nên tắt một danh mục là nó biến khỏi bộ lọc.
+ *
+ * Gọi hỏng thì trả về mảng rỗng: bộ lọc thiếu một ô vẫn hơn là cả trang
+ * không mở được.
+ */
+export async function getCategories(type: string): Promise<Category[]> {
+  const result = await apiGet<any[]>(`/categories${buildQuery({ type })}`);
+  if (!result) return [];
+  return Array.isArray(result.data) ? result.data.map(toCategoryRequired) : [];
 }
 
 /* ---------- Sự kiện ---------- */

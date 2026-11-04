@@ -4,8 +4,8 @@ import { Breadcrumb, ButtonLink, EmptyState, Skeleton } from "@/components/ui";
 import { DestinationCard } from "@/components/content/cards";
 import { FilterBar } from "@/components/content/filter-bar";
 import { Pagination } from "@/components/shared/pagination";
-import { destinationCategories, regions } from "@/lib/filters";
-import { getDestinations, DEFAULT_PAGE_SIZE } from "@/lib/queries";
+import { regions } from "@/lib/filters";
+import { getCategories, getDestinations, DEFAULT_PAGE_SIZE } from "@/lib/queries";
 import { formatNumber } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -32,14 +32,10 @@ export default async function DestinationsPage({
   const sort = (first(params.sort) ?? "newest") as "newest" | "popular" | "name";
   const page = Number(first(params.page) ?? 1);
 
-  const result = await getDestinations({
-    category,
-    region,
-    q,
-    sort,
-    page,
-    limit: DEFAULT_PAGE_SIZE,
-  });
+  const [result, categories] = await Promise.all([
+    getDestinations({ category, region, q, sort, page, limit: DEFAULT_PAGE_SIZE }),
+    getCategories("destination"),
+  ]);
 
   const buildHref = (nextPage: number) => {
     const next = new URLSearchParams();
@@ -78,7 +74,7 @@ export default async function DestinationsPage({
               {
                 param: "category",
                 label: "Loại hình",
-                options: destinationCategories.map((c) => ({
+                options: categories.map((c) => ({
                   label: c.name,
                   value: c.slug,
                 })),

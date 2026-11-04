@@ -3,8 +3,7 @@ import { Suspense } from "react";
 import { Breadcrumb, ButtonLink, EmptyState, Skeleton } from "@/components/ui";
 import { CourseCard } from "@/components/content/cards";
 import { FilterBar } from "@/components/content/filter-bar";
-import { learningCategories } from "@/lib/filters";
-import { getCourses } from "@/lib/queries";
+import { getCategories, getCourses } from "@/lib/queries";
 import { formatNumber } from "@/lib/format";
 
 const title = "Góc học tập";
@@ -26,7 +25,10 @@ export default async function Page({
   const raw = params.category;
   const category = Array.isArray(raw) ? raw[0] : raw;
 
-  const courses = await getCourses(category);
+  const [courses, categories] = await Promise.all([
+    getCourses(category),
+    getCategories("learning"),
+  ]);
 
   return (
     <div className="bg-surface-alt pb-20">
@@ -52,7 +54,7 @@ export default async function Page({
               {
                 param: "category",
                 label: "Lĩnh vực",
-                options: learningCategories.map((c) => ({
+                options: categories.map((c) => ({
                   label: c.name,
                   value: c.slug,
                 })),

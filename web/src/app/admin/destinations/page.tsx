@@ -3,7 +3,6 @@
 import { AdminShell } from "@/components/admin/shell";
 import { ResourceList, type Column } from "@/components/admin/resource-list";
 import { StatusBadge } from "@/components/admin/ui";
-import { destinationCategories } from "@/lib/filters";
 import type { AdminDestination } from "@/lib/admin/types";
 import { formatDate, formatNumber } from "@/lib/format";
 
@@ -47,19 +46,13 @@ export default function DestinationsPage() {
         endpoint="/admin/destinations"
         basePath="/admin/destinations"
         columns={columns}
+        categoryType="destination"
+        categoryLabel="Tất cả loại hình"
         searchPlaceholder="Tìm theo tên điểm đến"
         createLabel="Thêm điểm đến"
         emptyTitle="Chưa có điểm đến nào khớp"
         getLabel={(item) => item.name}
         filters={[
-          {
-            param: "category",
-            label: "Tất cả loại hình",
-            options: destinationCategories.map((c) => ({
-              label: c.name,
-              value: c.slug,
-            })),
-          },
           {
             param: "status",
             label: "Tất cả trạng thái",

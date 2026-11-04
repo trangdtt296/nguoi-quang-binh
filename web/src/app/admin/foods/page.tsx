@@ -3,7 +3,6 @@
 import { AdminShell } from "@/components/admin/shell";
 import { ResourceList, type Column } from "@/components/admin/resource-list";
 import { StatusBadge } from "@/components/admin/ui";
-import { foodCategories } from "@/lib/filters";
 import type { AdminFood } from "@/lib/admin/types";
 import { formatDate, formatNumber } from "@/lib/format";
 
@@ -45,16 +44,13 @@ export default function FoodsPage() {
         endpoint="/admin/foods"
         basePath="/admin/foods"
         columns={columns}
+        categoryType="food"
+        categoryLabel="Tất cả nhóm món"
         searchPlaceholder="Tìm theo tên món"
         createLabel="Thêm món ăn"
         emptyTitle="Chưa có món nào khớp"
         getLabel={(item) => item.name}
         filters={[
-          {
-            param: "category",
-            label: "Tất cả nhóm món",
-            options: foodCategories.map((c) => ({ label: c.name, value: c.slug })),
-          },
           {
             param: "status",
             label: "Tất cả trạng thái",
