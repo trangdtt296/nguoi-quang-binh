@@ -39,6 +39,44 @@ export interface AdminArticle {
   deletedAt: string | null;
 }
 
+export interface AdminDestination {
+  id: string;
+  name: string;
+  slug: string;
+  summary: string | null;
+  contentHtml: string | null;
+  coverImageUrl: string | null;
+  categoryId: string | null;
+  category: AdminCategory | null;
+  region: string | null;
+  address: string | null;
+  /** API trả về chuỗi vì Prisma Decimal không serialize thành số. */
+  latitude: string | number | null;
+  longitude: string | number | null;
+  bestTime: string | null;
+  visitInfo: { label: string; value: string }[] | null;
+  status: ContentStatus;
+  publishedAt: string | null;
+  viewCount: number;
+  isFeatured: boolean;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface AdminContactMessage {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  subject: string | null;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface AdminMedia {
   id: string;
   url: string;

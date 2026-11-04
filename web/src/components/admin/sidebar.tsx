@@ -29,6 +29,11 @@ interface NavItem {
   /** Chỉ hiện với admin trở lên. */
   adminOnly?: boolean;
   superAdminOnly?: boolean;
+  /**
+   * Màn hình chưa dựng: hiện mờ và không bấm được, thay vì để người dùng
+   * bấm vào rồi gặp trang 404.
+   */
+  upcoming?: boolean;
 }
 
 const groups: { title: string; items: NavItem[] }[] = [
@@ -41,10 +46,25 @@ const groups: { title: string; items: NavItem[] }[] = [
     items: [
       { label: "Bài viết", href: "/admin/articles", icon: FileText },
       { label: "Điểm đến", href: "/admin/destinations", icon: MapPin },
-      { label: "Ẩm thực", href: "/admin/foods", icon: UtensilsCrossed },
-      { label: "Sự kiện", href: "/admin/events", icon: CalendarDays },
-      { label: "Khóa học", href: "/admin/courses", icon: GraduationCap },
-      { label: "Album ảnh", href: "/admin/albums", icon: Images },
+      {
+        label: "Ẩm thực",
+        href: "/admin/foods",
+        icon: UtensilsCrossed,
+        upcoming: true,
+      },
+      {
+        label: "Sự kiện",
+        href: "/admin/events",
+        icon: CalendarDays,
+        upcoming: true,
+      },
+      {
+        label: "Khóa học",
+        href: "/admin/courses",
+        icon: GraduationCap,
+        upcoming: true,
+      },
+      { label: "Album ảnh", href: "/admin/albums", icon: Images, upcoming: true },
       { label: "Danh mục", href: "/admin/categories", icon: Tags },
     ],
   },
@@ -52,7 +72,13 @@ const groups: { title: string; items: NavItem[] }[] = [
     title: "Hệ thống",
     items: [
       { label: "Thư viện media", href: "/admin/media", icon: ImageIcon },
-      { label: "Banner", href: "/admin/banners", icon: LayoutTemplate, adminOnly: true },
+      {
+        label: "Banner",
+        href: "/admin/banners",
+        icon: LayoutTemplate,
+        adminOnly: true,
+        upcoming: true,
+      },
       { label: "Tin nhắn", href: "/admin/messages", icon: Mail, adminOnly: true },
       { label: "Thùng rác", href: "/admin/trash", icon: Trash2, adminOnly: true },
       {
@@ -60,8 +86,15 @@ const groups: { title: string; items: NavItem[] }[] = [
         href: "/admin/settings",
         icon: Settings,
         superAdminOnly: true,
+        upcoming: true,
       },
-      { label: "Tài khoản", href: "/admin/users", icon: Users, superAdminOnly: true },
+      {
+        label: "Tài khoản",
+        href: "/admin/users",
+        icon: Users,
+        superAdminOnly: true,
+        upcoming: true,
+      },
     ],
   },
 ];
@@ -108,6 +141,24 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {visible.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
+
+                  if (item.upcoming) {
+                    return (
+                      <li key={item.href}>
+                        <span
+                          title="Màn hình này đang được dựng"
+                          className="flex min-h-11 cursor-not-allowed items-center gap-3 rounded-[8px] px-3 text-[14.5px] text-silver/40"
+                        >
+                          <Icon size={17} aria-hidden="true" />
+                          {item.label}
+                          <span className="ml-auto text-[10.5px] uppercase tracking-[0.08em]">
+                            Sắp có
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  }
+
                   return (
                     <li key={item.href}>
                       <Link
