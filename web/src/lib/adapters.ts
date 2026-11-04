@@ -127,7 +127,13 @@ export function toEvent(raw: any): EventItem {
     startAt: str(raw.startAt),
     endAt: raw.endAt ?? undefined,
     isRecurring: Boolean(raw.isRecurring),
+    destination: raw.destination
+      ? { name: str(raw.destination.name), slug: str(raw.destination.slug) }
+      : undefined,
     publishedAt: str(raw.publishedAt, raw.createdAt ?? new Date().toISOString()),
+    seoTitle: raw.seoTitle ?? undefined,
+    seoDescription: raw.seoDescription ?? undefined,
+    ogImageUrl: raw.ogImageUrl ?? undefined,
   };
 }
 

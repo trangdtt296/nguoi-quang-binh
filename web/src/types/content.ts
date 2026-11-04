@@ -104,6 +104,8 @@ export interface EventItem extends SeoMeta {
   startAt: string;
   endAt?: string;
   isRecurring: boolean;
+  /** Điểm đến được gắn kèm, nếu sự kiện diễn ra ở một nơi có trong hệ thống. */
+  destination?: { name: string; slug: string };
   publishedAt: string;
 }
 

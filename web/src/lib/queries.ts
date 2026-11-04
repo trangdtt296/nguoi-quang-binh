@@ -177,10 +177,30 @@ export async function getFoodBySlug(slug: string): Promise<Food | null> {
 
 /* ---------- Sự kiện ---------- */
 
-export async function getEvents(limit = 12): Promise<EventItem[]> {
-  const result = await apiGet<any[]>(`/events${buildQuery({ limit, upcoming: true })}`);
-  if (!result) return [];
-  return Array.isArray(result.data) ? result.data.map(toEvent) : [];
+/**
+ * Danh sách sự kiện.
+ *
+ * `upcoming` để API lọc những sự kiện chưa diễn ra và sắp theo thứ tự tăng
+ * dần; không truyền thì lấy hết, mới nhất trước.
+ */
+export async function getEvents(
+  query: { upcoming?: boolean; page?: number; limit?: number } = {},
+): Promise<Paginated<EventItem>> {
+  const limit = query.limit ?? DEFAULT_PAGE_SIZE;
+  const result = await apiGet<any[]>(`/events${buildQuery({ ...query, limit })}`);
+  if (!result) return emptyPage<EventItem>(limit);
+  return toPaginated(result.data, result.meta, toEvent, limit);
+}
+
+/** Sự kiện sắp diễn ra, cho khối trên trang chủ. */
+export async function getUpcomingEvents(limit = 4): Promise<EventItem[]> {
+  const result = await getEvents({ upcoming: true, limit });
+  return result.items;
+}
+
+export async function getEventBySlug(slug: string): Promise<EventItem | null> {
+  const result = await apiGet<any>(`/events/${slug}`);
+  return result ? toEvent(result.data) : null;
 }
 
 /* ---------- Góc học tập ---------- */

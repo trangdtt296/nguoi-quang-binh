@@ -3,12 +3,13 @@ import { CalendarDays, MapPin, PlayCircle, Layers } from "lucide-react";
 import type {
   Article,
   Destination,
+  EventItem,
   Food,
   LearningCourse,
 } from "@/types/content";
 import { ContentImage } from "@/components/shared/content-image";
 import { Tag } from "@/components/ui";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatEventRange } from "@/lib/format";
 import { articleHref } from "@/lib/routes";
 
 const cardClass =
@@ -109,6 +110,43 @@ export function FoodCard({ item }: { item: Food }) {
         {item.season ? (
           <p className="mt-1.5 text-[13.5px] text-muted">{item.season}</p>
         ) : null}
+      </div>
+    </Link>
+  );
+}
+
+export function EventCard({ item }: { item: EventItem }) {
+  const past = new Date(item.endAt ?? item.startAt).getTime() < Date.now();
+
+  return (
+    <Link href={`/su-kien/${item.slug}`} className={cardClass}>
+      <ContentImage
+        src={item.coverImageUrl}
+        alt={`Ảnh sự kiện ${item.name}`}
+        ratio="16/9"
+        className="transition-transform duration-300 group-hover:scale-[1.03]"
+      />
+      <div className="p-5">
+        <div className="flex flex-wrap gap-2">
+          {item.isRecurring ? <Tag>Thường niên</Tag> : null}
+          {past ? <Tag>Đã diễn ra</Tag> : null}
+        </div>
+        <h3 className="mt-3 text-[18px] font-semibold leading-snug text-ink">
+          {item.name}
+        </h3>
+        <p className="mt-2 text-[14.5px] leading-relaxed text-muted">{item.summary}</p>
+        <div className="mt-3.5 flex flex-col gap-2 border-t border-line pt-3 text-[13px] text-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <CalendarDays size={14} className="shrink-0" aria-hidden="true" />
+            {formatEventRange(item.startAt, item.endAt)}
+          </span>
+          {item.destination?.name || item.locationText ? (
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin size={14} className="shrink-0" aria-hidden="true" />
+              {item.destination?.name || item.locationText}
+            </span>
+          ) : null}
+        </div>
       </div>
     </Link>
   );

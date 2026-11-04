@@ -4,6 +4,7 @@ import {
   getArticles,
   getCourses,
   getDestinations,
+  getEvents,
   getFoods,
 } from "@/lib/queries";
 import { articleHref } from "@/lib/routes";
@@ -19,6 +20,7 @@ const staticPaths = [
   "/diem-den",
   "/van-hoa",
   "/am-thuc",
+  "/su-kien",
   "/tin-tuc",
   "/cam-nang",
   "/goc-hoc-tap",
@@ -34,13 +36,14 @@ const staticPaths = [
  * sitemap chỉ còn các trang cố định — vẫn hợp lệ, không làm hỏng build.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [destinations, news, culture, guides, foods, courses, albums] =
+  const [destinations, news, culture, guides, foods, events, courses, albums] =
     await Promise.all([
       getDestinations({ limit: 50 }),
       getArticles({ type: "news", limit: 50 }),
       getArticles({ type: "culture", limit: 50 }),
       getArticles({ type: "guide", limit: 50 }),
       getFoods({ limit: 50 }),
+      getEvents({ limit: 50 }),
       getCourses(),
       getAlbums(),
     ]);
@@ -63,6 +66,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     ...foods.items.map((item) => ({
       url: `${siteUrl}/am-thuc/${item.slug}`,
+      lastModified: new Date(item.publishedAt),
+      priority: 0.6,
+    })),
+    ...events.items.map((item) => ({
+      url: `${siteUrl}/su-kien/${item.slug}`,
       lastModified: new Date(item.publishedAt),
       priority: 0.6,
     })),
