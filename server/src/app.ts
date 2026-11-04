@@ -44,12 +44,20 @@ export function createApp() {
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(pinoHttp({ logger }));
-  app.use(generalLimiter);
 
-  // Kiểm tra sống — Render dùng để biết service đã sẵn sàng chưa.
+  /*
+    Kiểm tra sống — Render dùng để biết service đã sẵn sàng chưa.
+
+    Đặt trước rate limiter, không phải sau: nếu limiter chặn đường này thì
+    Render tưởng service chết và khởi động lại, càng restart càng dồn request
+    vào một IP, càng bị chặn. Health check cũng không cần giới hạn vì nó
+    không chạm database.
+  */
   app.get("/health", (_req, res) => {
     res.json({ success: true, data: { status: "ok", time: new Date().toISOString() } });
   });
+
+  app.use(generalLimiter);
 
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/admin", adminRouter);

@@ -1,0 +1,64 @@
+# Cấu hình deploy backend lên Render (gói miễn phí).
+#
+# Dùng bằng cách vào Render → New → Blueprint → chọn repo này. Render đọc
+# file này, tự tạo service với đúng thư mục, lệnh build và health check, rồi
+# hỏi lần lượt từng biến môi trường có sync: false.
+#
+# Vì sao singapore: gần Việt Nam nhất trong các vùng Render có, và phải cùng
+# vùng với database Neon để mỗi truy vấn không phải đi nửa vòng trái đất.
+#
+# Lưu ý về gói miễn phí: service ngủ sau 15 phút không ai gọi, lần gọi đầu
+# sau khi ngủ mất khoảng 50 giây để thức. Trang web vẫn chạy, chỉ là lần tải
+# đầu tiên trong ngày hơi lâu.
+
+services:
+  - type: web
+    name: nguoi-quang-binh-api
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: server
+
+    # db:deploy chạy migration trước khi build. Để ở đây thay vì chạy tay:
+    # mỗi lần deploy mà schema có thay đổi thì database tự cập nhật theo,
+    # không bị lệch giữa code và database.
+    buildCommand: npm install && npm run db:deploy && npm run build
+    startCommand: npm run start
+
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Render tự gán PORT và server đọc từ env, nên không khai báo ở đây.
+
+      # Chuỗi kết nối Neon — chép nguyên từ file .env trên máy bạn.
+      - key: DATABASE_URL
+        sync: false
+
+      # Hai chuỗi bí mật ký JWT. Nên sinh mới cho production, khác với trên
+      # máy bạn: secret của máy cá nhân dễ lọt ra ngoài hơn.
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES
+        value: 7d
+
+      # Cloudinary — bỏ trống thì API vẫn chạy, chỉ không tải ảnh lên được.
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # Địa chỉ Vercel của website. Thiếu dòng này thì trình duyệt chặn mọi
+      # lời gọi API từ web sang đây.
+      - key: CORS_ORIGIN
+        value: https://nguoi-quang-binh.vercel.app
+      - key: SITE_URL
+        value: https://nguoi-quang-binh.vercel.app
