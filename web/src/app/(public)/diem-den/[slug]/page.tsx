@@ -44,8 +44,7 @@ export default async function DestinationDetailPage({ params }: { params: Params
       <ContentImage
         src={item.coverImageUrl}
         alt={`Ảnh ${item.name}`}
-        ratio="16/9"
-        className="max-h-[520px]"
+        height="h-[260px] sm:h-[380px] lg:h-[500px]"
         sizes="100vw"
         priority
       />

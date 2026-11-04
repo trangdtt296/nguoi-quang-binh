@@ -52,9 +52,9 @@ export default async function Page() {
       <div className="container-page mt-10">
         <ContentImage
           alt="Ảnh toàn cảnh vùng đất Quảng Bình"
-          ratio="16/9"
-          className="max-h-[440px] rounded-[12px]"
-          sizes="100vw"
+          height="h-[220px] sm:h-[320px] lg:h-[420px]"
+          className="rounded-[12px]"
+          sizes="(max-width: 1200px) 100vw, 1200px"
         />
       </div>
 

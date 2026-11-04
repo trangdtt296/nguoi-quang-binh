@@ -22,11 +22,15 @@ export function ArticleDetail({
 }) {
   return (
     <article className="pb-20">
+      {/*
+        Ảnh bìa tràn hết chiều ngang màn hình. Bảng màu của trang chỉ có
+        các sắc độ xám, nên ảnh là nguồn màu duy nhất — để nó lớn hết cỡ
+        là cách dùng đúng nhất.
+      */}
       <ContentImage
         src={article.coverImageUrl}
         alt={`Ảnh bài viết ${article.title}`}
-        ratio="16/9"
-        className="max-h-[480px]"
+        height="h-[240px] sm:h-[340px] lg:h-[460px]"
         sizes="100vw"
         priority
       />

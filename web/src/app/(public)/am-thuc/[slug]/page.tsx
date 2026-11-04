@@ -39,8 +39,7 @@ export default async function Page({ params }: { params: Params }) {
       <ContentImage
         src={food.coverImageUrl}
         alt={`Ảnh món ${food.name}`}
-        ratio="16/9"
-        className="max-h-[460px]"
+        height="h-[240px] sm:h-[340px] lg:h-[440px]"
         sizes="100vw"
         priority
       />

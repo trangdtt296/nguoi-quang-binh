@@ -105,8 +105,18 @@ export function GalleryGrid({ items }: { items: MediaItem[] }) {
             </button>
 
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
-              <div className="w-full max-w-[1000px]">
-                <ContentImage src={current.url} alt={current.altText} ratio="3/2" />
+              <div className="w-full max-w-[1100px]">
+                {/*
+                  Chiều cao tính theo màn hình và hiện trọn tấm ảnh: người
+                  mở ảnh lớn là để nhìn đủ, cắt bớt rìa thì hỏng mục đích.
+                */}
+                <ContentImage
+                  src={current.url}
+                  alt={current.altText}
+                  height="h-[58vh] sm:h-[66vh]"
+                  fit="contain"
+                  sizes="(max-width: 1100px) 100vw, 1100px"
+                />
               </div>
               <p className="text-center text-[14px] text-silver">
                 {current.caption ?? current.altText}
