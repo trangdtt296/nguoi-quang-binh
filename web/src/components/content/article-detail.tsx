@@ -4,22 +4,22 @@ import { Breadcrumb, Tag } from "@/components/ui";
 import { ContentImage } from "@/components/shared/content-image";
 import { Prose } from "@/components/shared/prose";
 import { ShareButtons } from "@/components/shared/share-buttons";
-import { getRelatedArticles } from "@/lib/queries";
 import { formatDate, formatNumber } from "@/lib/format";
 import { articleHref } from "@/lib/routes";
 
 /** Khung chung cho trang chi tiết bài viết, dùng cho cả ba chuyên mục. */
-export async function ArticleDetail({
+export function ArticleDetail({
   article,
+  related,
   sectionLabel,
   sectionHref,
 }: {
   article: Article;
+  /** Bài liên quan — API trả về kèm trang chi tiết, không phải gọi riêng. */
+  related: Article[];
   sectionLabel: string;
   sectionHref: string;
 }) {
-  const related = await getRelatedArticles(article, 3);
-
   return (
     <article className="pb-20">
       <ContentImage

@@ -3,15 +3,10 @@ import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/ui";
 import { GalleryGrid } from "@/components/shared/gallery-grid";
 import { ShareButtons } from "@/components/shared/share-buttons";
-import { getAlbumBySlug, getAllAlbumSlugs } from "@/lib/queries";
+import { getAlbumBySlug } from "@/lib/queries";
 import { formatDate } from "@/lib/format";
 
 type Params = Promise<{ slug: string }>;
-
-export async function generateStaticParams() {
-  const slugs = await getAllAlbumSlugs();
-  return slugs.map((slug) => ({ slug }));
-}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;

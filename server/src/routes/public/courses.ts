@@ -40,6 +40,9 @@ coursesRouter.get("/", async (req, res, next) => {
           viewCount: true,
           publishedAt: true,
           category: { select: { id: true, name: true, slug: true } },
+          // Đếm số bài có video, để thẻ khóa học ngoài trang danh sách biết
+          // mà ghi "Có video" hay "Bài viết".
+          _count: { select: { lessons: { where: { videoUrl: { not: null } } } } },
         },
         orderBy: { publishedAt: "desc" },
         skip,
@@ -48,7 +51,12 @@ coursesRouter.get("/", async (req, res, next) => {
       prisma.learningCourse.count({ where }),
     ]);
 
-    sendData(res, serialize(items), buildMeta(total, page, limit));
+    const withVideoFlag = items.map(({ _count, ...course }) => ({
+      ...course,
+      hasVideo: _count.lessons > 0,
+    }));
+
+    sendData(res, serialize(withVideoFlag), buildMeta(total, page, limit));
   } catch (error) {
     next(error);
   }

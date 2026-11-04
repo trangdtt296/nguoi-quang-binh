@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
-import { Check, Search, Upload, X } from "lucide-react";
+import { Check, Loader2, Search, Upload, X } from "lucide-react";
 import { AdminButton, AdminEmpty, AdminLoading, inputClass } from "./ui";
 import { api, ApiError, type PageMeta } from "@/lib/admin/api-client";
 import type { AdminMedia, MediaListResponse } from "@/lib/admin/types";
@@ -153,7 +153,11 @@ export function MediaPicker({
               uploading && "pointer-events-none opacity-60",
             )}
           >
-            <Upload size={16} aria-hidden="true" />
+            {uploading ? (
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+            ) : (
+              <Upload size={16} aria-hidden="true" />
+            )}
             {uploading ? "Đang tải lên" : "Tải ảnh mới"}
             <input
               type="file"
@@ -168,7 +172,25 @@ export function MediaPicker({
           </label>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="relative min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {/*
+            Lớp phủ khi đang tải: ảnh lên Cloudinary mất vài giây, không có
+            gì báo thì người dùng tưởng bị treo và bấm lại lần nữa.
+          */}
+          {uploading ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-surface/85 backdrop-blur-[2px]"
+            >
+              <Loader2 size={28} className="animate-spin" aria-hidden="true" />
+              <p className="text-[15px] font-medium">Đang tải ảnh lên</p>
+              <p className="max-w-[36ch] text-center text-[13.5px] leading-relaxed text-muted">
+                Ảnh lớn có thể mất vài giây. Đừng đóng cửa sổ này.
+              </p>
+            </div>
+          ) : null}
+
           {error ? (
             <p
               role="alert"

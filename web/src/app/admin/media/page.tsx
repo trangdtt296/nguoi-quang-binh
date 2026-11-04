@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
-import { Copy, ExternalLink, Search, Trash2, Upload } from "lucide-react";
+import { Copy, ExternalLink, Loader2, Search, Trash2, Upload } from "lucide-react";
 import { AdminShell } from "@/components/admin/shell";
 import {
   AdminButton,
@@ -41,6 +41,12 @@ function MediaContent() {
   const [page, setPage] = useState(1);
 
   const [uploading, setUploading] = useState(false);
+  // Tải nhiều file thì cho biết đang ở file thứ mấy, nếu không người dùng
+  // không biết còn bao lâu nữa và tưởng bị treo.
+  const [uploadProgress, setUploadProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const [deleting, setDeleting] = useState<AdminMedia | null>(null);
   const [deletePending, setDeletePending] = useState(false);
 
@@ -71,13 +77,17 @@ function MediaContent() {
   }, [load]);
 
   const uploadFiles = async (files: FileList) => {
+    const list = Array.from(files);
     setUploading(true);
+    setUploadProgress({ done: 0, total: list.length });
+
     let succeeded = 0;
     let lastError = "";
 
     // Tải lần lượt chứ không song song: gói Cloudinary miễn phí dễ bị chặn
     // khi có quá nhiều request cùng lúc.
-    for (const file of Array.from(files)) {
+    for (const [index, file] of list.entries()) {
+      setUploadProgress({ done: index, total: list.length });
       try {
         await api.upload(file, file.name);
         succeeded += 1;
@@ -88,6 +98,7 @@ function MediaContent() {
     }
 
     setUploading(false);
+    setUploadProgress(null);
 
     if (succeeded > 0) {
       showSuccess(`Đã tải lên ${succeeded} ảnh`);
@@ -138,8 +149,16 @@ function MediaContent() {
             uploading && "pointer-events-none opacity-60",
           )}
         >
-          <Upload size={16} aria-hidden="true" />
-          {uploading ? "Đang tải lên" : "Tải ảnh lên"}
+          {uploading ? (
+            <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+          ) : (
+            <Upload size={16} aria-hidden="true" />
+          )}
+          {uploading
+            ? uploadProgress
+              ? `Đang tải ${uploadProgress.done + 1}/${uploadProgress.total}`
+              : "Đang tải lên"
+            : "Tải ảnh lên"}
           <input
             type="file"
             accept="image/*"

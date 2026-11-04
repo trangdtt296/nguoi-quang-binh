@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ArticleListPage } from "@/components/content/article-list";
-import { guideCategories } from "@/lib/mock/categories";
+import { guideCategories } from "@/lib/filters";
 
 const title = "Cẩm nang du lịch";
 const description =

@@ -10,6 +10,15 @@ import { getSiteSettings } from "@/lib/queries";
  * Footer của trang công khai. Tên thư mục đặt trong ngoặc đơn nên không ảnh
  * hưởng tới đường dẫn: (public)/diem-den vẫn là /diem-den.
  */
+/**
+ * Render theo từng yêu cầu thay vì dựng sẵn lúc build.
+ *
+ * Nội dung do quản trị viên đăng, nên phải lấy mới mỗi lần — xuất bản xong
+ * là thấy ngay, không phải chờ build lại. Cũng nhờ vậy mà lúc build không
+ * cần gọi API, nên deploy được cả khi backend chưa sẵn sàng.
+ */
+export const dynamic = "force-dynamic";
+
 export default async function PublicLayout({ children }: { children: ReactNode }) {
   const settings = await getSiteSettings();
 

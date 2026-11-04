@@ -4,7 +4,7 @@ import { Breadcrumb, ButtonLink, EmptyState, Skeleton } from "@/components/ui";
 import { DestinationCard } from "@/components/content/cards";
 import { FilterBar } from "@/components/content/filter-bar";
 import { Pagination } from "@/components/shared/pagination";
-import { destinationCategories, regions } from "@/lib/mock/categories";
+import { destinationCategories, regions } from "@/lib/filters";
 import { getDestinations, DEFAULT_PAGE_SIZE } from "@/lib/queries";
 import { formatNumber } from "@/lib/format";
 

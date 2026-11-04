@@ -1,3 +1,10 @@
+/**
+ * Các danh mục và khu vực dùng cho bộ lọc.
+ *
+ * Giữ cố định trong code thay vì gọi API: bộ lọc phải hiện ngay khi trang
+ * mở, và danh sách này gần như không đổi. Nó khớp với dữ liệu seed trong
+ * server/prisma/seed.ts — thêm danh mục mới trong CMS thì nhớ thêm vào đây.
+ */
 import type { Category } from "@/types/content";
 
 export const destinationCategories: Category[] = [

@@ -5,14 +5,9 @@ import { Breadcrumb, Tag } from "@/components/ui";
 import { ContentImage } from "@/components/shared/content-image";
 import { Prose } from "@/components/shared/prose";
 import { ShareButtons } from "@/components/shared/share-buttons";
-import { getAllFoodSlugs, getFoodBySlug, getFeaturedFoods } from "@/lib/queries";
+import { getFoodBySlug, getFeaturedFoods } from "@/lib/queries";
 
 type Params = Promise<{ slug: string }>;
-
-export async function generateStaticParams() {
-  const slugs = await getAllFoodSlugs();
-  return slugs.map((slug) => ({ slug }));
-}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;

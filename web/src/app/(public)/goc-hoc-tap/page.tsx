@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { Breadcrumb, ButtonLink, EmptyState, Skeleton } from "@/components/ui";
 import { CourseCard } from "@/components/content/cards";
 import { FilterBar } from "@/components/content/filter-bar";
-import { learningCategories } from "@/lib/mock/categories";
+import { learningCategories } from "@/lib/filters";
 import { getCourses } from "@/lib/queries";
 import { formatNumber } from "@/lib/format";
 

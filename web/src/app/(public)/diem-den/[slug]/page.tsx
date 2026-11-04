@@ -5,19 +5,10 @@ import { CalendarDays, MapPin } from "lucide-react";
 import { Breadcrumb, Tag } from "@/components/ui";
 import { ContentImage } from "@/components/shared/content-image";
 import { ShareButtons } from "@/components/shared/share-buttons";
-import {
-  getAllDestinationSlugs,
-  getDestinationBySlug,
-  getFeaturedDestinations,
-} from "@/lib/queries";
+import { getDestinationBySlug, getFeaturedDestinations } from "@/lib/queries";
 import { formatNumber } from "@/lib/format";
 
 type Params = Promise<{ slug: string }>;
-
-export async function generateStaticParams() {
-  const slugs = await getAllDestinationSlugs();
-  return slugs.map((slug) => ({ slug }));
-}
 
 export async function generateMetadata({
   params,

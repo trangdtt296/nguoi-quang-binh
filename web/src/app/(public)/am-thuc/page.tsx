@@ -4,7 +4,7 @@ import { Breadcrumb, ButtonLink, EmptyState, Skeleton } from "@/components/ui";
 import { FoodCard } from "@/components/content/cards";
 import { FilterBar } from "@/components/content/filter-bar";
 import { Pagination } from "@/components/shared/pagination";
-import { foodCategories } from "@/lib/mock/categories";
+import { foodCategories } from "@/lib/filters";
 import { DEFAULT_PAGE_SIZE, getFoods } from "@/lib/queries";
 import { formatNumber } from "@/lib/format";
 

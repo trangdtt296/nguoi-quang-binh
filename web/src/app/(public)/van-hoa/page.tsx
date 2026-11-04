@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ArticleListPage } from "@/components/content/article-list";
-import { cultureCategories } from "@/lib/mock/categories";
+import { cultureCategories } from "@/lib/filters";
 
 const title = "Văn hóa & con người";
 const description =

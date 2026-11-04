@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ArticleListPage } from "@/components/content/article-list";
-import { articleCategories } from "@/lib/mock/categories";
+import { articleCategories } from "@/lib/filters";
 
 const title = "Tin tức & sự kiện";
 const description =

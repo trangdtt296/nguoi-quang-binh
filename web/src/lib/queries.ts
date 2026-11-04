@@ -1,11 +1,12 @@
 /**
- * Lớp lấy dữ liệu.
+ * Lớp lấy dữ liệu cho phần công khai.
  *
- * Giai đoạn 2 đọc từ dữ liệu mẫu trong src/lib/mock. Giai đoạn 5 chỉ cần
- * thay phần thân của các hàm dưới đây bằng lời gọi API thật — chữ ký hàm và
- * kiểu trả về giữ nguyên, nên không phải sửa bất kỳ component nào.
+ * Gọi API thật. Mọi hàm đều trả về giá trị an toàn khi API không phản hồi
+ * (danh sách rỗng, hoặc null) thay vì ném lỗi — backend chưa chạy thì
+ * trang vẫn mở được và hiện trạng thái rỗng, không trắng xóa.
  *
- * Mọi hàm đều async để sau này đổi sang fetch không phải đổi cách gọi.
+ * Dữ liệu mẫu cũ trong src/lib/mock chỉ còn dùng cho các danh sách tĩnh
+ * như khu vực và danh mục ở bộ lọc.
  */
 import type {
   Album,
@@ -20,27 +21,54 @@ import type {
   SiteSettings,
 } from "@/types/content";
 
-import { mockArticles } from "./mock/articles";
-import { mockDestinations } from "./mock/destinations";
-import { mockCourses, mockLessons } from "./mock/learning";
-import { mockAlbums, mockEvents, mockFoods, siteSettings } from "./mock/misc";
+import { apiGet, type ApiMeta } from "./api";
+import {
+  toAlbum,
+  toArticle,
+  toCourse,
+  toDestination,
+  toEvent,
+  toFood,
+  toLesson,
+  toSettings,
+} from "./adapters";
 
 export const DEFAULT_PAGE_SIZE = 12;
 
-function paginate<T>(items: T[], page: number, limit: number): Paginated<T> {
-  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
-  const safeLimit = Math.min(Math.max(Math.floor(limit) || DEFAULT_PAGE_SIZE, 1), 50);
-  const start = (safePage - 1) * safeLimit;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+function emptyPage<T>(limit = DEFAULT_PAGE_SIZE): Paginated<T> {
+  return { items: [], page: 1, limit, total: 0, totalPages: 1 };
+}
+
+function toPaginated<T>(
+  raw: any[] | undefined,
+  meta: ApiMeta | undefined,
+  map: (item: any) => T,
+  limit: number,
+): Paginated<T> {
+  const items = Array.isArray(raw) ? raw.map(map) : [];
   return {
-    items: items.slice(start, start + safeLimit),
-    page: safePage,
-    limit: safeLimit,
-    total: items.length,
-    totalPages: Math.max(1, Math.ceil(items.length / safeLimit)),
+    items,
+    page: meta?.page ?? 1,
+    limit: meta?.limit ?? limit,
+    total: meta?.total ?? items.length,
+    totalPages: meta?.totalPages ?? 1,
   };
 }
 
-/** Bỏ dấu tiếng Việt để tìm kiếm không phân biệt dấu. */
+/** Dựng query string, bỏ qua giá trị rỗng. */
+function buildQuery(params: Record<string, string | number | boolean | undefined>) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "" || value === false) continue;
+    search.set(key, String(value));
+  }
+  const queryString = search.toString();
+  return queryString ? `?${queryString}` : "";
+}
+
+/** Bỏ dấu tiếng Việt — dùng cho tìm kiếm phía giao diện. */
 export function normalize(input: string): string {
   return input
     .normalize("NFD")
@@ -50,12 +78,6 @@ export function normalize(input: string): string {
     .toLowerCase()
     .trim();
 }
-
-const matches = (needle: string, ...haystack: (string | undefined)[]) =>
-  haystack.some((text) => text && normalize(text).includes(needle));
-
-const byNewest = <T extends { publishedAt: string }>(a: T, b: T) =>
-  new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
 
 /* ---------- Điểm đến ---------- */
 
@@ -71,37 +93,25 @@ export interface DestinationQuery {
 export async function getDestinations(
   query: DestinationQuery = {},
 ): Promise<Paginated<Destination>> {
-  const { category, region, q, sort = "newest", page = 1, limit = DEFAULT_PAGE_SIZE } =
-    query;
-
-  let items = [...mockDestinations];
-
-  if (category) items = items.filter((d) => d.category?.slug === category);
-  if (region) items = items.filter((d) => d.region === region);
-  if (q) {
-    const needle = normalize(q);
-    items = items.filter((d) => matches(needle, d.name, d.summary));
-  }
-
-  if (sort === "popular") items.sort((a, b) => b.viewCount - a.viewCount);
-  else if (sort === "name") items.sort((a, b) => a.name.localeCompare(b.name, "vi"));
-  else items.sort(byNewest);
-
-  return paginate(items, page, limit);
+  const limit = query.limit ?? DEFAULT_PAGE_SIZE;
+  const result = await apiGet<any[]>(
+    `/destinations${buildQuery({ ...query, limit })}`,
+  );
+  if (!result) return emptyPage<Destination>(limit);
+  return toPaginated(result.data, result.meta, toDestination, limit);
 }
 
 export async function getDestinationBySlug(slug: string): Promise<Destination | null> {
-  return mockDestinations.find((d) => d.slug === slug) ?? null;
+  const result = await apiGet<any>(`/destinations/${slug}`);
+  return result ? toDestination(result.data) : null;
 }
 
 export async function getFeaturedDestinations(limit = 6): Promise<Destination[]> {
-  const featured = mockDestinations.filter((d) => d.isFeatured);
-  const rest = mockDestinations.filter((d) => !d.isFeatured);
-  return [...featured, ...rest].slice(0, limit);
-}
-
-export async function getAllDestinationSlugs(): Promise<string[]> {
-  return mockDestinations.map((d) => d.slug);
+  const featured = await getDestinations({ limit, sort: "newest" });
+  // API đã sắp xếp theo ngày; đẩy bài nổi bật lên trước.
+  return [...featured.items].sort(
+    (a, b) => Number(b.isFeatured) - Number(a.isFeatured),
+  );
 }
 
 /* ---------- Bài viết ---------- */
@@ -118,109 +128,95 @@ export interface ArticleQuery {
 export async function getArticles(
   query: ArticleQuery = {},
 ): Promise<Paginated<Article>> {
-  const { type, category, q, featured, page = 1, limit = DEFAULT_PAGE_SIZE } = query;
+  const limit = query.limit ?? DEFAULT_PAGE_SIZE;
+  const result = await apiGet<any[]>(`/articles${buildQuery({ ...query, limit })}`);
+  if (!result) return emptyPage<Article>(limit);
+  return toPaginated(result.data, result.meta, toArticle, limit);
+}
 
-  let items = [...mockArticles];
-  if (type) items = items.filter((a) => a.type === type);
-  if (category) items = items.filter((a) => a.category?.slug === category);
-  if (featured !== undefined) items = items.filter((a) => a.isFeatured === featured);
-  if (q) {
-    const needle = normalize(q);
-    items = items.filter((a) => matches(needle, a.title, a.excerpt));
-  }
+/** Trang chi tiết bài viết: trả về cả bài liên quan để khỏi gọi hai lần. */
+export async function getArticleWithRelated(
+  slug: string,
+): Promise<{ article: Article; related: Article[] } | null> {
+  const result = await apiGet<any>(`/articles/${slug}`);
+  if (!result) return null;
 
-  items.sort(byNewest);
-  return paginate(items, page, limit);
+  return {
+    article: toArticle(result.data),
+    related: Array.isArray(result.data.related)
+      ? result.data.related.map(toArticle)
+      : [],
+  };
 }
 
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
-  return mockArticles.find((a) => a.slug === slug) ?? null;
-}
-
-/** Slug của bài theo loại — dùng cho generateStaticParams. */
-export async function getArticleSlugsByType(type: ArticleType): Promise<string[]> {
-  return mockArticles.filter((a) => a.type === type).map((a) => a.slug);
-}
-
-/** Bài liên quan: cùng loại, ưu tiên cùng danh mục, bỏ chính nó. */
-export async function getRelatedArticles(
-  current: Article,
-  limit = 3,
-): Promise<Article[]> {
-  const sameCategory = mockArticles.filter(
-    (a) =>
-      a.id !== current.id &&
-      a.type === current.type &&
-      a.category?.slug === current.category?.slug,
-  );
-  const sameType = mockArticles.filter(
-    (a) => a.id !== current.id && a.type === current.type,
-  );
-  const seen = new Set<string>();
-  return [...sameCategory, ...sameType]
-    .filter((a) => (seen.has(a.id) ? false : seen.add(a.id)))
-    .slice(0, limit);
+  const found = await getArticleWithRelated(slug);
+  return found?.article ?? null;
 }
 
 /* ---------- Ẩm thực ---------- */
 
 export async function getFoods(
-  query: { category?: string; page?: number; limit?: number } = {},
+  query: { category?: string; q?: string; page?: number; limit?: number } = {},
 ): Promise<Paginated<Food>> {
-  const { category, page = 1, limit = DEFAULT_PAGE_SIZE } = query;
-  let items = [...mockFoods];
-  if (category) items = items.filter((f) => f.category?.slug === category);
-  items.sort(byNewest);
-  return paginate(items, page, limit);
+  const limit = query.limit ?? DEFAULT_PAGE_SIZE;
+  const result = await apiGet<any[]>(`/foods${buildQuery({ ...query, limit })}`);
+  if (!result) return emptyPage<Food>(limit);
+  return toPaginated(result.data, result.meta, toFood, limit);
 }
 
 export async function getFeaturedFoods(limit = 4): Promise<Food[]> {
-  return [...mockFoods].sort(byNewest).slice(0, limit);
+  const result = await getFoods({ limit });
+  return result.items;
 }
 
 export async function getFoodBySlug(slug: string): Promise<Food | null> {
-  return mockFoods.find((f) => f.slug === slug) ?? null;
-}
-
-export async function getAllFoodSlugs(): Promise<string[]> {
-  return mockFoods.map((f) => f.slug);
+  const result = await apiGet<any>(`/foods/${slug}`);
+  return result ? toFood(result.data) : null;
 }
 
 /* ---------- Sự kiện ---------- */
 
-export async function getEvents(limit?: number): Promise<EventItem[]> {
-  const items = [...mockEvents].sort(
-    (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
-  );
-  return limit ? items.slice(0, limit) : items;
+export async function getEvents(limit = 12): Promise<EventItem[]> {
+  const result = await apiGet<any[]>(`/events${buildQuery({ limit, upcoming: true })}`);
+  if (!result) return [];
+  return Array.isArray(result.data) ? result.data.map(toEvent) : [];
 }
 
 /* ---------- Góc học tập ---------- */
 
 export async function getCourses(category?: string): Promise<LearningCourse[]> {
-  const items = [...mockCourses].sort(byNewest);
-  return category ? items.filter((c) => c.category.slug === category) : items;
+  const result = await apiGet<any[]>(`/courses${buildQuery({ category, limit: 50 })}`);
+  if (!result) return [];
+  return Array.isArray(result.data) ? result.data.map(toCourse) : [];
+}
+
+/** Chi tiết khóa học kèm danh sách bài, API trả về trong một lần gọi. */
+export async function getCourseWithLessons(
+  courseSlug: string,
+): Promise<{ course: LearningCourse; lessons: Lesson[] } | null> {
+  const result = await apiGet<any>(`/courses/${courseSlug}`);
+  if (!result) return null;
+
+  return {
+    course: toCourse(result.data),
+    lessons: Array.isArray(result.data.lessons)
+      ? result.data.lessons.map((lesson: any) => toLesson(lesson, courseSlug))
+      : [],
+  };
 }
 
 export async function getCourseBySlug(slug: string): Promise<LearningCourse | null> {
-  return mockCourses.find((c) => c.slug === slug) ?? null;
+  const found = await getCourseWithLessons(slug);
+  return found?.course ?? null;
 }
 
-export async function getAllCourseSlugs(): Promise<string[]> {
-  return mockCourses.map((c) => c.slug);
-}
-
-/** Bài học của một khóa, đã sắp theo đúng thứ tự. */
 export async function getLessons(courseSlug: string): Promise<Lesson[]> {
-  return mockLessons
-    .filter((l) => l.courseSlug === courseSlug)
-    .sort((a, b) => a.lessonOrder - b.lessonOrder);
+  const found = await getCourseWithLessons(courseSlug);
+  return found?.lessons ?? [];
 }
 
-/**
- * Một bài học, kèm bài trước và bài sau để điều hướng.
- * Trả về null khi không tìm thấy, để trang gọi notFound().
- */
+/** Một bài học, kèm bài trước và bài sau để điều hướng. */
 export async function getLesson(
   courseSlug: string,
   lessonSlug: string,
@@ -230,37 +226,32 @@ export async function getLesson(
   previous: Lesson | null;
   next: Lesson | null;
 } | null> {
-  const lessons = await getLessons(courseSlug);
-  const index = lessons.findIndex((l) => l.slug === lessonSlug);
-  if (index === -1) return null;
+  const result = await apiGet<any>(`/courses/${courseSlug}/${lessonSlug}`);
+  if (!result) return null;
+
+  const lessons = Array.isArray(result.data.lessons)
+    ? result.data.lessons.map((lesson: any) => toLesson(lesson, courseSlug))
+    : [];
 
   return {
-    lesson: lessons[index],
+    lesson: toLesson(result.data.lesson, courseSlug),
     lessons,
-    previous: index > 0 ? lessons[index - 1] : null,
-    next: index < lessons.length - 1 ? lessons[index + 1] : null,
+    previous: result.data.previous ? toLesson(result.data.previous, courseSlug) : null,
+    next: result.data.next ? toLesson(result.data.next, courseSlug) : null,
   };
-}
-
-export async function getAllLessonParams(): Promise<
-  { courseSlug: string; lessonSlug: string }[]
-> {
-  return mockLessons.map((l) => ({ courseSlug: l.courseSlug, lessonSlug: l.slug }));
 }
 
 /* ---------- Thư viện ---------- */
 
-export async function getAlbums(limit?: number): Promise<Album[]> {
-  const items = [...mockAlbums].sort(byNewest);
-  return limit ? items.slice(0, limit) : items;
+export async function getAlbums(limit = 24): Promise<Album[]> {
+  const result = await apiGet<any[]>(`/albums${buildQuery({ limit })}`);
+  if (!result) return [];
+  return Array.isArray(result.data) ? result.data.map(toAlbum) : [];
 }
 
 export async function getAlbumBySlug(slug: string): Promise<Album | null> {
-  return mockAlbums.find((a) => a.slug === slug) ?? null;
-}
-
-export async function getAllAlbumSlugs(): Promise<string[]> {
-  return mockAlbums.map((a) => a.slug);
+  const result = await apiGet<any>(`/albums/${slug}`);
+  return result ? toAlbum(result.data) : null;
 }
 
 /* ---------- Tìm kiếm chung ---------- */
@@ -275,35 +266,32 @@ export interface SearchResult {
 }
 
 export async function search(keyword: string): Promise<SearchResult> {
-  const needle = normalize(keyword);
-  const take = 6;
+  const empty: SearchResult = {
+    keyword,
+    destinations: [],
+    articles: [],
+    foods: [],
+    courses: [],
+    total: 0,
+  };
 
-  const destinations = mockDestinations
-    .filter((d) => matches(needle, d.name, d.summary))
-    .slice(0, take);
-  const articles = mockArticles
-    .filter((a) => matches(needle, a.title, a.excerpt))
-    .slice(0, take);
-  const foods = mockFoods
-    .filter((f) => matches(needle, f.name, f.summary))
-    .slice(0, take);
-  const courses = mockCourses
-    .filter((c) => matches(needle, c.title, c.description))
-    .slice(0, take);
+  const result = await apiGet<any>(`/search${buildQuery({ q: keyword })}`);
+  if (!result) return empty;
 
+  const data = result.data;
   return {
     keyword,
-    destinations,
-    articles,
-    foods,
-    courses,
-    total:
-      destinations.length + articles.length + foods.length + courses.length,
+    destinations: (data.destinations ?? []).map(toDestination),
+    articles: (data.articles ?? []).map(toArticle),
+    foods: (data.foods ?? []).map(toFood),
+    courses: (data.courses ?? []).map(toCourse),
+    total: Number(data.total) || 0,
   };
 }
 
 /* ---------- Cấu hình ---------- */
 
 export async function getSiteSettings(): Promise<SiteSettings> {
-  return siteSettings;
+  const result = await apiGet<any>("/settings");
+  return toSettings(result?.data ?? {});
 }

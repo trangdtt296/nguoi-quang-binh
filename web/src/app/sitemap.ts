@@ -5,7 +5,6 @@ import {
   getCourses,
   getDestinations,
   getFoods,
-  getAllLessonParams,
 } from "@/lib/queries";
 import { articleHref } from "@/lib/routes";
 
@@ -14,15 +13,28 @@ const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").re
   "",
 );
 
+const staticPaths = [
+  "/",
+  "/gioi-thieu",
+  "/diem-den",
+  "/van-hoa",
+  "/am-thuc",
+  "/tin-tuc",
+  "/cam-nang",
+  "/goc-hoc-tap",
+  "/thu-vien",
+  "/lien-he",
+];
+
 /**
- * Sitemap sinh từ dữ liệu, không viết tay.
+ * Sitemap sinh từ dữ liệu thật.
  *
- * Backend cũng có sitemap riêng, nhưng nó nằm ở tên miền khác. Công cụ tìm
- * kiếm đọc sitemap ở chính tên miền của website, nên bản này mới là bản có
- * tác dụng.
+ * Sitemap được dựng lúc build, mà lúc đó API có thể chưa sẵn sàng. Các hàm
+ * lấy dữ liệu đều trả về rỗng khi gọi hỏng, nên trường hợp xấu nhất là
+ * sitemap chỉ còn các trang cố định — vẫn hợp lệ, không làm hỏng build.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [destinations, news, culture, guides, foods, courses, lessons, albums] =
+  const [destinations, news, culture, guides, foods, courses, albums] =
     await Promise.all([
       getDestinations({ limit: 50 }),
       getArticles({ type: "news", limit: 50 }),
@@ -30,24 +42,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       getArticles({ type: "guide", limit: 50 }),
       getFoods({ limit: 50 }),
       getCourses(),
-      getAllLessonParams(),
       getAlbums(),
     ]);
 
-  const staticPaths = [
-    "/",
-    "/gioi-thieu",
-    "/diem-den",
-    "/van-hoa",
-    "/am-thuc",
-    "/tin-tuc",
-    "/cam-nang",
-    "/goc-hoc-tap",
-    "/thu-vien",
-    "/lien-he",
-  ];
-
-  const entries: MetadataRoute.Sitemap = [
+  return [
     ...staticPaths.map((path) => ({
       url: `${siteUrl}${path}`,
       changeFrequency: "weekly" as const,
@@ -73,16 +71,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(item.publishedAt),
       priority: 0.6,
     })),
-    ...lessons.map((item) => ({
-      url: `${siteUrl}/goc-hoc-tap/${item.courseSlug}/${item.lessonSlug}`,
-      priority: 0.5,
-    })),
     ...albums.map((item) => ({
       url: `${siteUrl}/thu-vien/${item.slug}`,
       lastModified: new Date(item.publishedAt),
       priority: 0.5,
     })),
   ];
-
-  return entries;
 }

@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArticleDetail } from "@/components/content/article-detail";
-import { getArticleBySlug, getArticleSlugsByType } from "@/lib/queries";
+import { getArticleWithRelated } from "@/lib/queries";
 
 type Params = Promise<{ slug: string }>;
 
-export async function generateStaticParams() {
-  const slugs = await getArticleSlugsByType("culture");
-  return slugs.map((slug) => ({ slug }));
-}
-
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
-  const article = await getArticleBySlug(slug);
-  if (!article || article.type !== "culture") return { title: "Không tìm thấy bài viết" };
+  const found = await getArticleWithRelated(slug);
+  if (!found || found.article.type !== "culture") {
+    return { title: "Không tìm thấy bài viết" };
+  }
 
+  const { article } = found;
   return {
     title: article.seoTitle ?? article.title,
     description: article.seoDescription ?? article.excerpt,
@@ -31,8 +29,15 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function Page({ params }: { params: Params }) {
   const { slug } = await params;
-  const article = await getArticleBySlug(slug);
-  if (!article || article.type !== "culture") notFound();
+  const found = await getArticleWithRelated(slug);
+  if (!found || found.article.type !== "culture") notFound();
 
-  return <ArticleDetail article={article} sectionLabel="Văn hóa" sectionHref="/van-hoa" />;
+  return (
+    <ArticleDetail
+      article={found.article}
+      related={found.related}
+      sectionLabel="Văn hóa"
+      sectionHref="/van-hoa"
+    />
+  );
 }

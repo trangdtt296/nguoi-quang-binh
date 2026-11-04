@@ -4,20 +4,16 @@ import { notFound } from "next/navigation";
 import { Layers, PlayCircle, Clock } from "lucide-react";
 import { Breadcrumb, ButtonLink, EmptyState, Tag } from "@/components/ui";
 import { ContentImage } from "@/components/shared/content-image";
-import { getAllCourseSlugs, getCourseBySlug, getLessons } from "@/lib/queries";
+import { getCourseWithLessons } from "@/lib/queries";
 
 type Params = Promise<{ courseSlug: string }>;
 
-export async function generateStaticParams() {
-  const slugs = await getAllCourseSlugs();
-  return slugs.map((courseSlug) => ({ courseSlug }));
-}
-
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { courseSlug } = await params;
-  const course = await getCourseBySlug(courseSlug);
-  if (!course) return { title: "Không tìm thấy khóa học" };
+  const found = await getCourseWithLessons(courseSlug);
+  if (!found) return { title: "Không tìm thấy khóa học" };
 
+  const { course } = found;
   return {
     title: course.seoTitle ?? course.title,
     description: course.seoDescription ?? course.description,
@@ -33,10 +29,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function Page({ params }: { params: Params }) {
   const { courseSlug } = await params;
-  const course = await getCourseBySlug(courseSlug);
-  if (!course) notFound();
+  const found = await getCourseWithLessons(courseSlug);
+  if (!found) notFound();
 
-  const lessons = await getLessons(courseSlug);
+  const { course, lessons } = found;
   const totalMinutes = lessons.reduce((sum, l) => sum + (l.durationMinutes ?? 0), 0);
 
   return (

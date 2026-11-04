@@ -6,17 +6,9 @@ import { ChevronLeft, ChevronRight, PlayCircle } from "lucide-react";
 import { Breadcrumb, Tag } from "@/components/ui";
 import { Prose } from "@/components/shared/prose";
 import { ShareButtons } from "@/components/shared/share-buttons";
-import {
-  getAllLessonParams,
-  getCourseBySlug,
-  getLesson,
-} from "@/lib/queries";
+import { getCourseBySlug, getLesson } from "@/lib/queries";
 
 type Params = Promise<{ courseSlug: string; lessonSlug: string }>;
-
-export async function generateStaticParams() {
-  return getAllLessonParams();
-}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { courseSlug, lessonSlug } = await params;
