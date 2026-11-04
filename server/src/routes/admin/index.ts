@@ -121,7 +121,34 @@ adminRouter.use("/media", mediaRouter);
 /* ---------- Sắp xếp lại thứ tự bài trong khóa học ---------- */
 
 const reorderSchema = z.object({
-  lessonIds: z.array(z.string().uuid()).min(1, "Chưa có bài nào để sắp xếp"),
+  // Cho phép mảng rỗng: xóa bài cuối cùng thì CMS gửi danh sách trống để
+  // đặt lại lessonCount về 0.
+  lessonIds: z.array(z.string().uuid()).max(500),
+});
+
+/** Danh sách bài học của một khóa, đã sắp theo thứ tự. */
+adminRouter.get("/courses/:id/lessons", requireAuth, async (req, res, next) => {
+  try {
+    const lessons = await prisma.article.findMany({
+      where: { courseId: req.params.id, deletedAt: null },
+      orderBy: { lessonOrder: "asc" },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        contentHtml: true,
+        lessonOrder: true,
+        videoUrl: true,
+        durationMinutes: true,
+        status: true,
+        publishedAt: true,
+      },
+    });
+    sendData(res, serialize(lessons));
+  } catch (error) {
+    next(error);
+  }
 });
 
 adminRouter.patch(
@@ -163,6 +190,71 @@ adminRouter.patch(
     }
   },
 );
+
+/* ---------- Ảnh trong album ---------- */
+
+const albumItemsSchema = z.object({
+  mediaIds: z.array(z.string().uuid()).max(200),
+});
+
+/**
+ * Đặt lại toàn bộ ảnh của một album.
+ *
+ * Thay cả danh sách thay vì thêm bớt từng ảnh: quản trị viên sắp xếp trên
+ * giao diện rồi lưu một lần, nên gửi nguyên trạng thái cuối là đơn giản và
+ * không sợ lệch thứ tự.
+ */
+adminRouter.patch(
+  "/albums/:id/items",
+  requireAuth,
+  requireAdmin,
+  validate(albumItemsSchema),
+  async (req, res, next) => {
+    try {
+      const { mediaIds } = req.body as z.infer<typeof albumItemsSchema>;
+
+      await prisma.$transaction([
+        prisma.albumMedia.deleteMany({ where: { albumId: req.params.id } }),
+        prisma.albumMedia.createMany({
+          data: mediaIds.map((mediaId, index) => ({
+            albumId: req.params.id,
+            mediaId,
+            sortOrder: index,
+          })),
+        }),
+      ]);
+
+      sendData(res, { count: mediaIds.length });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/** Lấy ảnh của album, kèm đủ thông tin để hiện lưới trong CMS. */
+adminRouter.get("/albums/:id/items", requireAuth, async (req, res, next) => {
+  try {
+    const rows = await prisma.albumMedia.findMany({
+      where: { albumId: req.params.id },
+      orderBy: { sortOrder: "asc" },
+      include: {
+        media: {
+          select: {
+            id: true,
+            url: true,
+            thumbnailUrl: true,
+            altText: true,
+            fileName: true,
+          },
+        },
+      },
+    });
+
+    sendData(res, serialize(rows.map((row) => row.media)));
+  } catch (error) {
+    next(error);
+  }
+});
 
 /* ---------- Cấu hình website ---------- */
 

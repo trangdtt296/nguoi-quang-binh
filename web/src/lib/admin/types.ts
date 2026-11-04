@@ -66,6 +66,161 @@ export interface AdminDestination {
   deletedAt: string | null;
 }
 
+export interface AdminFood {
+  id: string;
+  name: string;
+  slug: string;
+  summary: string | null;
+  contentHtml: string | null;
+  coverImageUrl: string | null;
+  categoryId: string | null;
+  category: AdminCategory | null;
+  season: string | null;
+  originStory: string | null;
+  whereToEat: { name: string; address: string }[] | null;
+  status: ContentStatus;
+  publishedAt: string | null;
+  viewCount: number;
+  isFeatured: boolean;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface AdminEvent {
+  id: string;
+  name: string;
+  slug: string;
+  summary: string | null;
+  contentHtml: string | null;
+  coverImageUrl: string | null;
+  categoryId: string | null;
+  category: AdminCategory | null;
+  destinationId: string | null;
+  destination: { id: string; name: string; slug: string } | null;
+  locationText: string | null;
+  startAt: string;
+  endAt: string | null;
+  isRecurring: boolean;
+  status: ContentStatus;
+  publishedAt: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface AdminCourse {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  categoryId: string | null;
+  category: AdminCategory | null;
+  lessonCount: number;
+  status: ContentStatus;
+  publishedAt: string | null;
+  viewCount: number;
+  isFeatured: boolean;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+/** Bài học trong khóa học — thực chất là một Article type = "lesson". */
+export interface AdminLesson {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  contentHtml: string | null;
+  lessonOrder: number | null;
+  videoUrl: string | null;
+  durationMinutes: number | null;
+  status: ContentStatus;
+  publishedAt: string | null;
+}
+
+export interface AdminAlbum {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  categoryId: string | null;
+  status: ContentStatus;
+  publishedAt: string | null;
+  sortOrder: number;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export type BannerPosition = "home_hero" | "home_middle" | "sidebar";
+
+export interface AdminBanner {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  imageUrl: string | null;
+  mobileImageUrl: string | null;
+  linkUrl: string | null;
+  position: BannerPosition;
+  sortOrder: number;
+  isActive: boolean;
+  startAt: string | null;
+  endAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export const BANNER_POSITION_LABELS: Record<BannerPosition, string> = {
+  home_hero: "Đầu trang chủ",
+  home_middle: "Giữa trang chủ",
+  sidebar: "Cột bên",
+};
+
+/** Một dòng trong bảng settings. `value` là JSON nên kiểu là unknown. */
+export interface AdminSetting {
+  key: string;
+  value: unknown;
+  group: string;
+  updatedAt: string;
+}
+
+export type UserRole = "editor" | "admin" | "super_admin";
+
+export interface AdminAccount {
+  id: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  isActive: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  editor: "Cộng tác viên",
+  admin: "Quản trị viên",
+  super_admin: "Quản trị cấp cao",
+};
+
+export const USER_ROLE_HINTS: Record<UserRole, string> = {
+  editor: "Viết và sửa nội dung của chính mình, chỉ lưu được bản nháp.",
+  admin: "Duyệt, xuất bản và xóa mọi nội dung. Xem được tin nhắn liên hệ.",
+  super_admin: "Toàn quyền, thêm được tài khoản và sửa cấu hình website.",
+};
+
 export interface AdminContactMessage {
   id: string;
   fullName: string;
