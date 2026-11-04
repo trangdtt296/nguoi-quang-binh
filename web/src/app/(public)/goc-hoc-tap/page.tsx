@@ -9,7 +9,7 @@ import { formatNumber } from "@/lib/format";
 
 const title = "Góc học tập";
 const description =
-  "Nơi học thêm cho mình: ngoại ngữ, lập trình và nhiều lĩnh vực khác. Chọn một lĩnh vực rồi học theo từng bài, đến đâu biết đến đó. Tất cả miễn phí, không cần đăng ký tài khoản.";
+  "Ngoại ngữ, lập trình, và nhiều thứ khác. Mỗi khóa chia thành từng bài, học đến đâu biết đến đó. Tất cả miễn phí, không cần đăng ký tài khoản.";
 
 export const metadata: Metadata = {
   title,
