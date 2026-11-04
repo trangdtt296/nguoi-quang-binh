@@ -16,10 +16,14 @@ import {
 import { api, ApiError, type PageMeta } from "@/lib/admin/api-client";
 import { useAuth } from "@/lib/admin/auth-context";
 
-/** Mọi bản ghi quản trị đều có id; phần còn lại tùy từng loại nội dung. */
+/**
+ * Khung này chỉ cần biết bản ghi có `id` để dựng liên kết và gọi API xóa.
+ * Các trường khác do từng màn hình tự đọc trong hàm render của cột, nên
+ * không ràng buộc gì thêm — ràng buộc thừa chỉ làm interface cụ thể như
+ * AdminDestination không khớp được.
+ */
 export interface ResourceRecord {
   id: string;
-  [key: string]: unknown;
 }
 
 export interface Column<T> {
