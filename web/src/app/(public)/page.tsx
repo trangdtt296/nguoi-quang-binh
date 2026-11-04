@@ -257,8 +257,8 @@ export default async function HomePage() {
         <div className="container-page">
           <SectionHeading
             eyebrow="Góc học tập"
-            title="Học để đi xa, hoặc để ở lại"
-            lede="Tiếng Anh làm du lịch, tiếng Nhật đi lao động, lập trình để làm từ xa mà không phải rời quê. Miễn phí, không cần đăng ký."
+            title="Mỗi ngày biết thêm một điều"
+            lede="Ngoại ngữ, lập trình và nhiều lĩnh vực khác, chia sẵn thành từng bài ngắn. Học cho mình, miễn phí, không cần đăng ký."
             action={
               <ButtonLink href="/goc-hoc-tap" variant="ghost">
                 Xem các khóa học
