@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["e2e/**/*.ts", "support/**/*.ts", "playwright.config.ts", "scripts/**/*.mjs"]
+}

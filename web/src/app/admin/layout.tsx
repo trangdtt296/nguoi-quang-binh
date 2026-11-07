@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AuthProvider } from "@/lib/admin/auth-context";
+import { ToastProvider } from "@/components/admin/ui";
 
 export const metadata: Metadata = {
   title: {
@@ -12,11 +13,15 @@ export const metadata: Metadata = {
 };
 
 /**
- * Layout của khu quản trị.
+ * Layout của toàn khu quản trị, kể cả trang đăng nhập.
  *
- * Chỉ bọc AuthProvider ở đây; khung giao diện nằm trong AdminShell và được
- * gọi ở từng trang, để riêng trang đăng nhập không bị bọc trong khung đó.
+ * Khung giao diện (sidebar, header) nằm ở (protected)/layout.tsx, để riêng
+ * trang đăng nhập không bị bọc trong khung đó.
  */
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  return <AuthProvider>{children}</AuthProvider>;
+  return (
+    <AuthProvider>
+      <ToastProvider>{children}</ToastProvider>
+    </AuthProvider>
+  );
 }

@@ -1,292 +1,183 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { z } from "zod";
+import { Tabs } from "@/components/admin/ui";
 import {
-  Field,
-  Toast,
-  inputClass,
-  textareaClass,
-  useToast,
-} from "@/components/admin/ui";
+  AdminForm,
+  FormColumns,
+  FormImage,
+  FormInput,
+  FormTextarea,
+  TitleSlugFields,
+} from "@/components/admin/form-fields";
 import {
-  CoverImagePanel,
   FormHeader,
-  FormTabs,
   PublishTab,
+  SaveFirstNote,
   SeoTab,
-  toLocalInput,
+  useResourceForm,
 } from "@/components/admin/form-parts";
 import { AlbumPhotos } from "@/components/admin/album-photos";
-import { api, ApiError } from "@/lib/admin/api-client";
-import { useAuth } from "@/lib/admin/auth-context";
-import type { AdminAlbum, ContentStatus } from "@/lib/admin/types";
-import { slugify } from "@/lib/slugify";
+import {
+  SEO_LIMITS,
+  firstTabWithError,
+  type FieldLimits,
+  optionalNumber,
+  orNull,
+  publishFields,
+  refineSchedule,
+  requiredText,
+  seoFields,
+  seoPublishDefaults,
+  seoPublishPayload,
+  text,
+} from "@/lib/admin/form-utils";
+import { COUNT_LIMITS, FIELD_LIMITS as F } from "@/lib/field-limits";
+import type { AdminAlbum } from "@/lib/admin/types";
+
+/** Giới hạn theo lib/field-limits.ts. */
+const LIMITS = {
+  title: F.placeName,
+  slug: F.slug,
+  description: F.albumDescription,
+  ...SEO_LIMITS,
+} satisfies FieldLimits;
+
+const schema = z
+  .object({
+    title: requiredText("Vui lòng nhập tên album", LIMITS.title, "Tên quá ngắn"),
+    slug: text(LIMITS.slug),
+    description: text(LIMITS.description),
+    coverImageUrl: text(),
+    sortOrder: optionalNumber({
+      min: 0,
+      integer: true,
+      max: COUNT_LIMITS.sortOrder,
+      message: `Thứ tự phải là số nguyên từ 0 đến ${COUNT_LIMITS.sortOrder}`,
+    }),
+    ...seoFields,
+    ...publishFields,
+  })
+  .superRefine(refineSchedule);
+
+type AlbumValues = z.infer<typeof schema>;
 
 type Tab = "info" | "photos" | "seo" | "publish";
 
-interface FormState {
-  title: string;
-  slug: string;
-  description: string;
-  coverImageUrl: string;
-  sortOrder: string;
-  status: ContentStatus;
-  publishedAt: string;
-  seoTitle: string;
-  seoDescription: string;
+const TABS = [
+  ["info", "Thông tin"],
+  ["photos", "Ảnh"],
+  ["seo", "SEO"],
+  ["publish", "Xuất bản"],
+] as const;
+
+const TAB_FIELDS = {
+  info: ["title", "slug", "description", "sortOrder"],
+  seo: ["seoTitle", "seoDescription"],
+  publish: ["publishedAt"],
+} satisfies Partial<Record<Tab, (keyof AlbumValues)[]>>;
+
+function toFormValues(album?: AdminAlbum): AlbumValues {
+  return {
+    title: album?.title ?? "",
+    slug: album?.slug ?? "",
+    description: album?.description ?? "",
+    coverImageUrl: album?.coverImageUrl ?? "",
+    sortOrder: String(album?.sortOrder ?? 0),
+    ...seoPublishDefaults(album),
+  };
 }
 
-const emptyForm: FormState = {
-  title: "",
-  slug: "",
-  description: "",
-  coverImageUrl: "",
-  sortOrder: "0",
-  status: "draft",
-  publishedAt: "",
-  seoTitle: "",
-  seoDescription: "",
-};
+function toPayload(values: AlbumValues) {
+  return {
+    title: values.title,
+    slug: values.slug || undefined,
+    description: orNull(values.description),
+    coverImageUrl: orNull(values.coverImageUrl),
+    sortOrder: Number(values.sortOrder || 0),
+    ...seoPublishPayload(values),
+  };
+}
+
+const publicPath = (slug: string) => `/thu-vien/${slug}`;
 
 export function AlbumForm({ album }: { album?: AdminAlbum }) {
-  const router = useRouter();
-  const { isAdmin } = useAuth();
-  const { toast, showSuccess, showError, dismiss } = useToast();
-
   const [tab, setTab] = useState<Tab>("info");
-  const [form, setForm] = useState<FormState>(
-    album
-      ? {
-          title: album.title,
-          slug: album.slug,
-          description: album.description ?? "",
-          coverImageUrl: album.coverImageUrl ?? "",
-          sortOrder: String(album.sortOrder),
-          status: album.status,
-          publishedAt: toLocalInput(album.publishedAt),
-          seoTitle: album.seoTitle ?? "",
-          seoDescription: album.seoDescription ?? "",
-        }
-      : emptyForm,
-  );
 
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
-  const [saving, setSaving] = useState(false);
-  const [slugTouched, setSlugTouched] = useState(Boolean(album));
-
-  const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-    setForm((current) => ({ ...current, [key]: value }));
-    setErrors((current) => ({ ...current, [key]: undefined }));
-  };
-
-  const validate = (): boolean => {
-    const found: Partial<Record<keyof FormState, string>> = {};
-
-    if (!form.title.trim()) found.title = "Vui lòng nhập tên album";
-    else if (form.title.trim().length < 2) found.title = "Tên quá ngắn";
-
-    if (form.description.length > 1000) found.description = "Mô tả tối đa 1000 ký tự";
-    if (form.seoDescription.length > 320)
-      found.seoDescription = "Mô tả SEO tối đa 320 ký tự";
-
-    const order = form.sortOrder.trim();
-    if (order) {
-      const parsed = Number(order);
-      if (!Number.isInteger(parsed) || parsed < 0) {
-        found.sortOrder = "Thứ tự phải là số nguyên từ 0 trở lên";
-      }
-    }
-
-    if (form.status === "scheduled" && !form.publishedAt) {
-      found.publishedAt = "Chọn thời điểm xuất bản khi đặt lịch";
-    }
-
-    setErrors(found);
-    if (Object.keys(found).length > 0) {
-      if (found.title || found.description) setTab("info");
-      else if (found.seoDescription) setTab("seo");
-      else setTab("publish");
-      return false;
-    }
-    return true;
-  };
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!validate()) return;
-
-    setSaving(true);
-    try {
-      const payload = {
-        title: form.title.trim(),
-        slug: form.slug.trim() || undefined,
-        description: form.description.trim() || null,
-        coverImageUrl: form.coverImageUrl.trim() || null,
-        sortOrder: form.sortOrder.trim() ? Number(form.sortOrder) : 0,
-        status: form.status,
-        publishedAt: form.publishedAt
-          ? new Date(form.publishedAt).toISOString()
-          : null,
-        seoTitle: form.seoTitle.trim() || null,
-        seoDescription: form.seoDescription.trim() || null,
-      };
-
-      if (album) {
-        await api.patch(`/admin/albums/${album.id}`, payload);
-        showSuccess("Đã lưu thay đổi");
-      } else {
-        const { data } = await api.post<AdminAlbum>("/admin/albums", payload);
-        showSuccess("Đã tạo album, giờ chọn ảnh vào");
-        router.replace(`/admin/albums/${data.id}/edit`);
-      }
-    } catch (error) {
-      if (error instanceof ApiError && error.details?.length) {
-        showError(`${error.message}: ${error.details.map((d) => d.message).join(", ")}`);
-      } else {
-        showError(error instanceof ApiError ? error.message : "Không lưu được");
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
+  const { form, onSubmit, saving } = useResourceForm({
+    endpoint: "/admin/albums",
+    record: album,
+    schema,
+    defaultValues: toFormValues(album),
+    toPayload,
+    createdMessage: "Đã tạo album, giờ chọn ảnh vào",
+  });
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-6">
+    <AdminForm
+      form={form}
+      idPrefix="album"
+      limits={LIMITS}
+      onSubmit={onSubmit}
+      onInvalid={(errors) => setTab(firstTabWithError(errors, TAB_FIELDS) ?? tab)}
+      className="flex flex-col gap-6"
+    >
       <FormHeader
         title={album ? "Sửa album" : "Thêm album"}
         backHref="/admin/albums"
-        previewHref={
-          album && album.status === "published" ? `/thu-vien/${form.slug}` : undefined
-        }
+        previewPath={album?.status === "published" ? publicPath : undefined}
         saving={saving}
         saveLabel={album ? "Lưu thay đổi" : "Tạo album"}
       />
 
-      <FormTabs<Tab>
-        active={tab}
-        onChange={setTab}
-        tabs={[
-          ["info", "Thông tin"],
-          ["photos", "Ảnh"],
-          ["seo", "SEO"],
-          ["publish", "Xuất bản"],
-        ]}
-      />
+      <Tabs tabs={TABS} active={tab} onChange={setTab} />
 
       {tab === "info" ? (
-        <div className="flex flex-wrap gap-6">
-          <div className="flex min-w-0 flex-[999_1_480px] flex-col gap-5">
-            <Field label="Tên album" htmlFor="album-title" error={errors.title} required>
-              <input
-                id="album-title"
-                value={form.title}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setField("title", value);
-                  if (!slugTouched) setField("slug", slugify(value));
-                }}
-                aria-invalid={Boolean(errors.title)}
-                className={inputClass}
+        <FormColumns
+          mainBasis="480px"
+          main={
+            <>
+              <TitleSlugFields
+                titleName="title"
+                titleLabel="Tên album"
+                slugHint="Để trống thì hệ thống tự sinh từ tên album."
+                autoSlug={!album}
               />
-            </Field>
-
-            <Field
-              label="Đường dẫn"
-              htmlFor="album-slug"
-              hint="Để trống thì hệ thống tự sinh từ tên album."
-            >
-              <input
-                id="album-slug"
-                value={form.slug}
-                onChange={(event) => {
-                  setSlugTouched(true);
-                  setField("slug", event.target.value);
-                }}
-                className={inputClass}
-              />
-            </Field>
-
-            <Field
-              label="Mô tả"
-              htmlFor="album-description"
-              error={errors.description}
-              hint={`Bộ ảnh này chụp ở đâu, khi nào, ai chụp. ${form.description.length}/1000 ký tự.`}
-            >
-              <textarea
-                id="album-description"
+              <FormTextarea
+                name="description"
+                label="Mô tả"
                 rows={5}
-                value={form.description}
-                onChange={(event) => setField("description", event.target.value)}
-                aria-invalid={Boolean(errors.description)}
-                className={textareaClass}
+                hint={(length) =>
+                  `Bộ ảnh này chụp ở đâu, khi nào, ai chụp. ${length}/${LIMITS.description.max} ký tự.`
+                }
               />
-            </Field>
-
-            <Field
-              label="Thứ tự hiển thị"
-              htmlFor="album-sort-order"
-              error={errors.sortOrder}
-              hint="Số nhỏ hiện trước. Để 0 nếu không cần ưu tiên album nào."
-            >
-              <input
-                id="album-sort-order"
+              <FormInput
+                name="sortOrder"
+                maxLength={String(COUNT_LIMITS.sortOrder).length}
+                label="Thứ tự hiển thị"
                 inputMode="numeric"
-                value={form.sortOrder}
-                onChange={(event) => setField("sortOrder", event.target.value)}
-                aria-invalid={Boolean(errors.sortOrder)}
-                className={inputClass}
+                hint="Số nhỏ hiện trước. Để 0 nếu không cần ưu tiên album nào."
               />
-            </Field>
-          </div>
-
-          <div className="flex min-w-0 flex-1 basis-[280px] flex-col gap-5">
-            <CoverImagePanel
-              value={form.coverImageUrl}
-              onChange={(url) => setField("coverImageUrl", url)}
-            />
-          </div>
-        </div>
+            </>
+          }
+          side={<FormImage name="coverImageUrl" />}
+        />
       ) : null}
 
       {tab === "photos" ? (
         album ? (
           <AlbumPhotos albumId={album.id} />
         ) : (
-          <p className="max-w-[60ch] rounded-[8px] border border-line bg-surface-alt px-4 py-3 text-[14px] leading-relaxed text-muted">
-            Lưu album trước đã. Có album rồi mới gắn ảnh vào được.
-          </p>
+          <SaveFirstNote>Lưu album trước đã. Có album rồi mới gắn ảnh vào được.</SaveFirstNote>
         )
       ) : null}
 
       {tab === "seo" ? (
-        <SeoTab
-          idPrefix="album"
-          title={form.title}
-          seoTitle={form.seoTitle}
-          seoDescription={form.seoDescription}
-          fallbackDescription={form.description}
-          publicPath={`/thu-vien/${form.slug}`}
-          error={errors.seoDescription}
-          onChange={setField}
-        />
+        <SeoTab titleField="title" fallbackField="description" publicPath={publicPath} />
       ) : null}
 
-      {tab === "publish" ? (
-        <PublishTab
-          idPrefix="album"
-          status={form.status}
-          publishedAt={form.publishedAt}
-          isAdmin={isAdmin}
-          error={errors.publishedAt}
-          onChangeStatus={(status) => setField("status", status)}
-          onChangePublishedAt={(value) => setField("publishedAt", value)}
-        />
-      ) : null}
-
-      {toast ? (
-        <Toast kind={toast.kind} message={toast.message} onDismiss={dismiss} />
-      ) : null}
-    </form>
+      {tab === "publish" ? <PublishTab /> : null}
+    </AdminForm>
   );
 }

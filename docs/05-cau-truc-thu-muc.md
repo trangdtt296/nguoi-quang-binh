@@ -74,20 +74,16 @@ nguoi-quang-binh/
     │   │   │   ├── lien-he/page.tsx
     │   │   │   └── tim-kiem/page.tsx
     │   │   ├── admin/                      CMS, layout riêng, client-side
-    │   │   │   ├── layout.tsx              sidebar + header + kiểm tra đăng nhập
+    │   │   │   ├── layout.tsx              AuthProvider + ToastProvider
     │   │   │   ├── login/page.tsx
-    │   │   │   ├── page.tsx                Dashboard
-    │   │   │   ├── articles/…               list · new · [id]/edit
-    │   │   │   ├── destinations/…
-    │   │   │   ├── foods/… · events/… · albums/…
-    │   │   │   ├── categories/page.tsx
-    │   │   │   ├── media/page.tsx
-    │   │   │   ├── banners/page.tsx
-    │   │   │   ├── messages/page.tsx
-    │   │   │   ├── trash/page.tsx
-    │   │   │   ├── settings/page.tsx
-    │   │   │   ├── users/page.tsx
-    │   │   │   └── profile/page.tsx
+    │   │   │   └── (protected)/            route group: cần đăng nhập, không đổi URL
+    │   │   │       ├── layout.tsx          AdminShell (sidebar + header + chặn truy cập)
+    │   │   │       ├── page.tsx            Dashboard
+    │   │   │       ├── articles/…          list · new · [id]/edit
+    │   │   │       ├── destinations/… · foods/… · events/…
+    │   │   │       ├── courses/… · albums/… · banners/…
+    │   │   │       ├── categories/ · media/ · messages/
+    │   │   │       └── trash/ · settings/ · users/
     │   │   ├── sitemap.ts                  sinh sitemap.xml
     │   │   ├── robots.ts
     │   │   └── not-found.tsx
@@ -117,6 +113,15 @@ nguoi-quang-binh/
 ```
 
 Trang công khai render phía server (lấy dữ liệu trong Server Component) để có SEO; khu `/admin` chạy phía client vì cần token và tương tác liên tục.
+
+**Lớp dữ liệu khu quản trị** (cập nhật 05/11/2026):
+
+- `lib/http.ts` — địa chỉ API, `ApiError`, đọc phản hồi, `getErrorMessage`. Dùng chung cho admin và form liên hệ.
+- `lib/admin/api-client.ts` — gọi API kèm token, tự làm mới token khi hết hạn.
+- `lib/admin/queries.ts` — query key và hook react-query (`useListQuery`, `useDetailQuery`, `useSaveMutation`, `useDeleteMutation`, `useUploadMedia`…). Key luôn bắt đầu bằng đường dẫn API, nên invalidate theo đường dẫn là danh sách, chi tiết và thùng rác cùng tải lại.
+- `lib/admin/form-utils.ts` — mảnh schema zod và hàm đổi giá trị form sang dữ liệu API.
+- `components/admin/form-fields.tsx` — ô nhập gắn sẵn react-hook-form (`FormInput`, `FormSelect`, `FormRows`…).
+- `components/admin/form-parts.tsx` — `useResourceForm` (luồng tạo/sửa chung), thanh đầu trang, tab SEO và Xuất bản.
 
 **Nguyên tắc:** mỗi file một nhiệm vụ, file component không quá ~200 dòng, logic gọi API nằm trong `hooks/` chứ không viết thẳng trong page, mọi thành phần lặp lại đều nằm trong `components/ui`.
 
