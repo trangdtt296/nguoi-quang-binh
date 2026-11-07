@@ -19,10 +19,14 @@ services:
     region: singapore
     rootDir: server
 
+    # --include=dev là bắt buộc, không phải cho chắc: NODE_ENV=production bên
+    # dưới làm npm bỏ qua devDependencies, mà typescript và @types/* nằm ở đó.
+    # Thiếu cờ này thì tsc chạy không có khai báo kiểu và build hỏng.
+    #
     # db:deploy chạy migration trước khi build. Để ở đây thay vì chạy tay:
     # mỗi lần deploy mà schema có thay đổi thì database tự cập nhật theo,
     # không bị lệch giữa code và database.
-    buildCommand: npm install && npm run db:deploy && npm run build
+    buildCommand: npm install --include=dev && npm run db:deploy && npm run build
     startCommand: npm run start
 
     healthCheckPath: /health

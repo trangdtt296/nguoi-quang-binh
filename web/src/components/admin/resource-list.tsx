@@ -20,7 +20,7 @@ import {
 } from "./ui";
 import { formatDate, formatNumber } from "@/lib/format";
 import { useAuth } from "@/lib/admin/auth-context";
-import { useDeleteMutation, useListQuery } from "@/lib/admin/queries";
+import { useCategoryOptions, useDeleteMutation, useListQuery } from "@/lib/admin/queries";
 import { getErrorMessage } from "@/lib/http";
 
 /**
@@ -114,6 +114,8 @@ export function ResourceList<T extends ResourceRecord>({
   endpoint,
   columns,
   filters = [],
+  categoryType,
+  categoryLabel = "Tất cả danh mục",
   searchPlaceholder = "Tìm kiếm",
   createLabel = "Thêm mới",
   getLabel,
@@ -127,6 +129,14 @@ export function ResourceList<T extends ResourceRecord>({
   endpoint: string;
   columns: Column<T>[];
   filters?: ListFilter<T>[];
+  /**
+   * Có giá trị thì thêm một ô lọc danh mục, lấy danh sách từ API.
+   *
+   * Không khai danh mục sẵn trong code: quản trị viên thêm danh mục trong
+   * CMS thì ô lọc phải có ngay, không phải chờ sửa code.
+   */
+  categoryType?: string;
+  categoryLabel?: string;
   searchPlaceholder?: string;
   createLabel?: string;
   /** Tên bản ghi, dùng trong thông báo và hộp xác nhận. */
@@ -144,8 +154,14 @@ export function ResourceList<T extends ResourceRecord>({
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<T | null>(null);
 
+  const categories = useCategoryOptions(categoryType);
+  const allFilters: ListFilter<T>[] =
+    categoryType && categories.length > 0
+      ? [categoryFilter(categoryLabel, categories), ...filters]
+      : filters;
+
   const serverFilters = Object.fromEntries(
-    filters.filter((filter) => !filter.match).map((filter) => [filter.param, filterValues[filter.param]]),
+    allFilters.filter((filter) => !filter.match).map((filter) => [filter.param, filterValues[filter.param]]),
   );
   const query = useListQuery<T[]>(endpoint, {
     page,
@@ -198,7 +214,7 @@ export function ResourceList<T extends ResourceRecord>({
           }}
         />
 
-        {filters.map((filter) => (
+        {allFilters.map((filter) => (
           <div key={filter.param} className="min-w-[160px] flex-1">
             <label htmlFor={`filter-${filter.param}`} className="sr-only">
               {filter.label}

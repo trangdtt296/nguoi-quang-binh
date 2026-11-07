@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { Menu, Search, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Logo } from "./logo";
 import { mainNav } from "@/lib/nav";
 
@@ -22,12 +22,17 @@ export function Header({ facebookPageUrl }: { facebookPageUrl: string }) {
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
-      <div className="container-page flex min-h-[76px] items-center gap-7">
+      <div className="container-page flex min-h-[76px] items-center gap-6">
         <Logo className="text-ink" />
 
+        {/*
+          whitespace-nowrap là chỗ hỏng cũ: thiếu nó thì khi thanh menu chật,
+          trình duyệt ngắt chữ giữa tên mục ("Điểm" xuống dòng "đến") thay vì
+          để nguyên. Thêm một mục vào menu là hỏng ngay.
+        */}
         <nav
           aria-label="Điều hướng chính"
-          className="ml-auto hidden items-center gap-6 lg:flex"
+          className="ml-auto hidden items-center gap-5 lg:flex xl:gap-7"
         >
           {mainNav.map((item) => (
             <Link
@@ -35,7 +40,7 @@ export function Header({ facebookPageUrl }: { facebookPageUrl: string }) {
               href={item.href}
               aria-current={isActive(item.href) ? "page" : undefined}
               className={clsx(
-                "py-2 text-[15px] font-medium transition-colors",
+                "whitespace-nowrap py-2 text-[15px] font-medium transition-colors",
                 isActive(item.href) ? "text-ink underline underline-offset-8" : "text-muted hover:text-ink",
               )}
             >
@@ -45,24 +50,6 @@ export function Header({ facebookPageUrl }: { facebookPageUrl: string }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-2 lg:ml-0">
-          <Link
-            href="/tim-kiem"
-            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-[8px] border border-line px-3 text-[14px] text-muted transition-colors hover:border-ink hover:text-ink"
-          >
-            <Search size={17} aria-hidden="true" />
-            <span className="hidden md:inline">Tìm kiếm</span>
-            <span className="sr-only md:hidden">Tìm kiếm</span>
-          </Link>
-
-          <a
-            href={facebookPageUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden min-h-11 items-center rounded-[8px] bg-ink px-4 text-[14px] font-semibold text-white transition-colors hover:bg-primary-500 md:inline-flex"
-          >
-            Fanpage
-          </a>
-
           <button
             type="button"
             onClick={() => setOpen((value) => !value)}
@@ -92,6 +79,12 @@ export function Header({ facebookPageUrl }: { facebookPageUrl: string }) {
                 {item.label}
               </Link>
             ))}
+            <Link
+              href="/tim-kiem"
+              className="border-b border-line py-3.5 text-[16px] font-medium text-muted"
+            >
+              Tìm kiếm
+            </Link>
             <a
               href={facebookPageUrl}
               target="_blank"

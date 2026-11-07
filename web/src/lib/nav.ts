@@ -40,6 +40,7 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
     items: [
       { label: "Góc học tập", href: "/goc-hoc-tap" },
       { label: "Thư viện ảnh", href: "/thu-vien" },
+      { label: "Tìm kiếm", href: "/tim-kiem" },
       { label: "Giới thiệu", href: "/gioi-thieu" },
       { label: "Liên hệ", href: "/lien-he" },
     ],

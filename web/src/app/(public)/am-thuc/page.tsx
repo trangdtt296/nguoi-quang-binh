@@ -4,8 +4,7 @@ import { Breadcrumb, ButtonLink, EmptyState, Skeleton } from "@/components/ui";
 import { FoodCard } from "@/components/content/cards";
 import { FilterBar } from "@/components/content/filter-bar";
 import { Pagination } from "@/components/shared/pagination";
-import { foodCategories } from "@/lib/filters";
-import { DEFAULT_PAGE_SIZE, getFoods } from "@/lib/queries";
+import { DEFAULT_PAGE_SIZE, getCategories, getFoods } from "@/lib/queries";
 import { formatNumber } from "@/lib/format";
 
 const title = "Ẩm thực quê hương";
@@ -30,7 +29,10 @@ export default async function Page({
   const category = first(params.category);
   const page = Number(first(params.page) ?? 1);
 
-  const result = await getFoods({ category, page, limit: DEFAULT_PAGE_SIZE });
+  const [result, categories] = await Promise.all([
+    getFoods({ category, page, limit: DEFAULT_PAGE_SIZE }),
+    getCategories("food"),
+  ]);
 
   const buildHref = (nextPage: number) => {
     const next = new URLSearchParams();
@@ -63,7 +65,7 @@ export default async function Page({
               {
                 param: "category",
                 label: "Phân loại",
-                options: foodCategories.map((c) => ({ label: c.name, value: c.slug })),
+                options: categories.map((c) => ({ label: c.name, value: c.slug })),
               },
             ]}
           />

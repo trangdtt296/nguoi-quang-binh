@@ -43,6 +43,12 @@ jobs:
     defaults:
       run:
         working-directory: server
+    # Dựng đúng điều kiện như Render, không phải điều kiện dễ hơn. Chính
+    # NODE_ENV=production làm npm bỏ devDependencies — một lần build hỏng trên
+    # Render vì chuyện này, mà CI lúc đó vẫn xanh. Giữ biến ở đây để lần sau
+    # lỗi hiện ngay trên GitHub.
+    env:
+      NODE_ENV: production
     steps:
       - uses: actions/checkout@v4
 
@@ -51,7 +57,8 @@ jobs:
           node-version: "20"
 
       - name: Cài thư viện
-        run: npm install --no-audit --no-fund
+        # --include=dev vì NODE_ENV=production ở trên. Giống hệt render.yaml.
+        run: npm install --include=dev --no-audit --no-fund
 
       - name: Sinh Prisma Client
         # Chỉ đọc schema.prisma, không cần kết nối database.

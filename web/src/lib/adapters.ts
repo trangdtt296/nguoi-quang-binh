@@ -31,6 +31,17 @@ const num = (value: unknown): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+/** Dùng cho danh sách danh mục lấy riêng từ API, nơi bản ghi luôn có thật. */
+export function toCategoryRequired(raw: any): Category {
+  return {
+    id: str(raw?.id),
+    type: raw?.type ?? "article",
+    name: str(raw?.name),
+    slug: str(raw?.slug),
+    description: raw?.description ?? undefined,
+  };
+}
+
 function toCategory(raw: any): Category | undefined {
   if (!raw) return undefined;
   return {

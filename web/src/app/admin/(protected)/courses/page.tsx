@@ -4,14 +4,12 @@ import {
   Muted,
   ResourceList,
   categoryColumn,
-  categoryFilter,
   publishedAtColumn,
   statusColumn,
   statusFilter,
   viewCountColumn,
   type Column,
 } from "@/components/admin/resource-list";
-import { learningCategories } from "@/lib/filters";
 import type { AdminCourse } from "@/lib/admin/types";
 
 const columns: Column<AdminCourse>[] = [
@@ -40,7 +38,9 @@ export default function CoursesPage() {
       emptyTitle="Chưa có khóa học nào khớp"
       unit="khóa học"
       getLabel={(item) => item.title}
-      filters={[categoryFilter("Tất cả lĩnh vực", learningCategories), statusFilter]}
+      categoryType="learning"
+      categoryLabel="Tất cả lĩnh vực"
+      filters={[statusFilter]}
     />
   );
 }

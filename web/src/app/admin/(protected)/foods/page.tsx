@@ -4,14 +4,12 @@ import {
   Muted,
   ResourceList,
   categoryColumn,
-  categoryFilter,
   publishedAtColumn,
   statusColumn,
   statusFilter,
   viewCountColumn,
   type Column,
 } from "@/components/admin/resource-list";
-import { foodCategories } from "@/lib/filters";
 import type { AdminFood } from "@/lib/admin/types";
 
 const columns: Column<AdminFood>[] = [
@@ -35,7 +33,9 @@ export default function FoodsPage() {
       emptyTitle="Chưa có món nào khớp"
       unit="món"
       getLabel={(item) => item.name}
-      filters={[categoryFilter("Tất cả nhóm món", foodCategories), statusFilter]}
+      categoryType="food"
+      categoryLabel="Tất cả nhóm món"
+      filters={[statusFilter]}
     />
   );
 }

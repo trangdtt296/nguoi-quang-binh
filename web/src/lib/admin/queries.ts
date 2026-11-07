@@ -115,10 +115,11 @@ export function useUploadMedia() {
 /* ---------- Danh sách phụ cho ô chọn ---------- */
 
 /** Danh mục theo loại. Lỗi thì coi như chưa có danh mục — ô chọn vẫn dùng được. */
-export function useCategoryOptions(type: string) {
+export function useCategoryOptions(type: string | undefined) {
   const { data } = useQuery({
     queryKey: ["/categories", type],
     queryFn: async () => (await api.get<AdminCategory[]>(`/categories?type=${type}`)).data,
+    enabled: Boolean(type),
     staleTime: 5 * 60_000,
   });
   return data ?? [];

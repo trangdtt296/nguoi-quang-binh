@@ -4,14 +4,12 @@ import {
   Muted,
   ResourceList,
   categoryColumn,
-  categoryFilter,
   publishedAtColumn,
   statusColumn,
   statusFilter,
   viewCountColumn,
   type Column,
 } from "@/components/admin/resource-list";
-import { destinationCategories } from "@/lib/filters";
 import type { AdminDestination } from "@/lib/admin/types";
 
 const columns: Column<AdminDestination>[] = [
@@ -35,7 +33,9 @@ export default function DestinationsPage() {
       emptyTitle="Chưa có điểm đến nào khớp"
       unit="điểm đến"
       getLabel={(item) => item.name}
-      filters={[categoryFilter("Tất cả loại hình", destinationCategories), statusFilter]}
+      categoryType="destination"
+      categoryLabel="Tất cả loại hình"
+      filters={[statusFilter]}
     />
   );
 }
