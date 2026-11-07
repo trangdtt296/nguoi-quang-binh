@@ -1,16 +1,86 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import type { ComponentProps } from "react";
 import clsx from "clsx";
-import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { useForm, useWatch, type UseFormRegisterReturn } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { FIELD_LIMITS as F } from "@/lib/field-limits";
+import { API_URL, getErrorMessage, networkError, parseResponse } from "@/lib/http";
 
-type Field = "fullName" | "email" | "phone" | "subject" | "message";
-type Errors = Partial<Record<Field, string>>;
-type Status = "idle" | "sending" | "sent" | "failed";
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Số điện thoại Việt Nam: 10 số, bắt đầu bằng 0. Khoảng trắng và dấu chấm được bỏ qua. */
 const PHONE_PATTERN = /^0\d{9}$/;
+
+const LIMITS = {
+  fullName: F.personName,
+  email: F.email,
+  phone: F.phone,
+  subject: F.contactSubject,
+  message: F.contactMessage,
+};
+
+const schema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(1, "Vui lòng nhập họ tên")
+    .min(LIMITS.fullName.min, "Họ tên quá ngắn")
+    .max(LIMITS.fullName.max, "Họ tên quá dài"),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Vui lòng nhập email")
+    .email("Email không hợp lệ")
+    .max(LIMITS.email.max, "Email quá dài"),
+  phone: z
+    .string()
+    .transform((value) => value.replace(/[\s.]/g, ""))
+    .refine(
+      (value) => !value || PHONE_PATTERN.test(value),
+      "Số điện thoại phải có 10 chữ số, bắt đầu bằng 0",
+    ),
+  subject: z.string().trim().max(LIMITS.subject.max, "Tiêu đề quá dài"),
+  message: z
+    .string()
+    .trim()
+    .min(1, "Vui lòng nhập nội dung")
+    .min(LIMITS.message.min, "Nội dung cần ít nhất 10 ký tự")
+    .max(LIMITS.message.max, "Nội dung quá dài"),
+});
+
+type ContactValues = z.infer<typeof schema>;
+
+/** Thuộc tính minLength/maxLength cho từng ô, lấy từ LIMITS. */
+const LIMIT_PROPS = {
+  fullName: { minLength: LIMITS.fullName.min, maxLength: LIMITS.fullName.max },
+  email: { maxLength: LIMITS.email.max },
+  phone: { maxLength: LIMITS.phone.max },
+  subject: { maxLength: LIMITS.subject.max },
+};
+
+const EMPTY: ContactValues = { fullName: "", email: "", phone: "", subject: "", message: "" };
+
+const FALLBACK_ERROR = "Không gửi được, bạn thử lại sau ít phút nhé";
+
+async function sendContactMessage(values: ContactValues) {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/contact`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...values,
+        phone: values.phone || undefined,
+        subject: values.subject || undefined,
+      }),
+    });
+  } catch {
+    throw networkError();
+  }
+  return parseResponse(response, FALLBACK_ERROR);
+}
 
 /**
  * Form liên hệ.
@@ -22,102 +92,24 @@ const PHONE_PATTERN = /^0\d{9}$/;
  * email, vì Render gói free chặn cổng SMTP (xem docs/02-kien-truc.md).
  */
 export function ContactForm() {
-  const [values, setValues] = useState<Record<Field, string>>({
-    fullName: "",
-    email: "",
-    phone: "",
-    subject: "",
-    message: "",
+  // react-hook-form tự đưa con trỏ về ô lỗi đầu tiên khi bấm gửi.
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    formState: { errors },
+  } = useForm<ContactValues>({ resolver: zodResolver(schema), defaultValues: EMPTY });
+
+  const send = useMutation({
+    mutationFn: sendContactMessage,
+    onSuccess: () => reset(EMPTY),
   });
-  const [errors, setErrors] = useState<Errors>({});
-  const [status, setStatus] = useState<Status>("idle");
-  const [failMessage, setFailMessage] = useState("");
 
-  const setField = (field: Field, value: string) => {
-    setValues((current) => ({ ...current, [field]: value }));
-    // Xóa lỗi của đúng ô vừa sửa, để người dùng thấy lỗi biến mất ngay.
-    setErrors((current) => ({ ...current, [field]: undefined }));
-  };
+  const messageLength = useWatch({ control, name: "message" }).trim().length;
+  const sending = send.isPending;
 
-  const validate = (): Errors => {
-    const found: Errors = {};
-
-    const name = values.fullName.trim();
-    if (!name) found.fullName = "Vui lòng nhập họ tên";
-    else if (name.length < 2) found.fullName = "Họ tên quá ngắn";
-    else if (name.length > 150) found.fullName = "Họ tên quá dài";
-
-    const email = values.email.trim();
-    if (!email) found.email = "Vui lòng nhập email";
-    else if (!EMAIL_PATTERN.test(email)) found.email = "Email không hợp lệ";
-
-    const phone = values.phone.replace(/[\s.]/g, "");
-    if (phone && !PHONE_PATTERN.test(phone)) {
-      found.phone = "Số điện thoại phải có 10 chữ số, bắt đầu bằng 0";
-    }
-
-    if (values.subject.trim().length > 200) found.subject = "Tiêu đề quá dài";
-
-    const message = values.message.trim();
-    if (!message) found.message = "Vui lòng nhập nội dung";
-    else if (message.length < 10) found.message = "Nội dung cần ít nhất 10 ký tự";
-    else if (message.length > 5000) found.message = "Nội dung quá dài";
-
-    return found;
-  };
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-
-    const found = validate();
-    setErrors(found);
-    if (Object.keys(found).length > 0) {
-      // Đưa con trỏ về ô lỗi đầu tiên thay vì bắt người dùng tự tìm.
-      const firstField = Object.keys(found)[0];
-      document.getElementById(`contact-${firstField}`)?.focus();
-      return;
-    }
-
-    setStatus("sending");
-    setFailMessage("");
-
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) throw new Error("Chưa cấu hình địa chỉ API");
-
-      const response = await fetch(`${apiUrl}/contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: values.fullName.trim(),
-          email: values.email.trim(),
-          phone: values.phone.replace(/[\s.]/g, "") || undefined,
-          subject: values.subject.trim() || undefined,
-          message: values.message.trim(),
-        }),
-      });
-
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(
-          payload?.error?.message ?? "Không gửi được, bạn thử lại sau ít phút nhé",
-        );
-      }
-
-      setStatus("sent");
-      setValues({ fullName: "", email: "", phone: "", subject: "", message: "" });
-    } catch (error) {
-      setStatus("failed");
-      setFailMessage(
-        error instanceof Error
-          ? error.message
-          : "Không gửi được, bạn thử lại sau ít phút nhé",
-      );
-    }
-  };
-
-  if (status === "sent") {
+  if (send.isSuccess) {
     return (
       <div className="rounded-[12px] border border-line bg-surface-alt p-8 text-center">
         <CheckCircle2 size={36} className="mx-auto text-ink" aria-hidden="true" />
@@ -127,7 +119,7 @@ export function ContactForm() {
         </p>
         <button
           type="button"
-          onClick={() => setStatus("idle")}
+          onClick={() => send.reset()}
           className="mt-6 inline-flex min-h-11 items-center rounded-[8px] border border-line px-5 text-[14.5px] font-semibold transition-colors hover:border-ink"
         >
           Gửi tin nhắn khác
@@ -136,80 +128,79 @@ export function ContactForm() {
     );
   }
 
-  const sending = status === "sending";
-
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-5">
-      {status === "failed" ? (
+    <form
+      onSubmit={handleSubmit((values) => send.mutate(values))}
+      noValidate
+      className="flex flex-col gap-5"
+    >
+      {send.isError ? (
         <div
           role="alert"
           className="flex items-start gap-3 rounded-[10px] border border-line bg-surface-alt px-4 py-3.5"
         >
           <AlertCircle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
-          <p className="text-[14.5px] leading-relaxed">{failMessage}</p>
+          <p className="text-[14.5px] leading-relaxed">
+            {getErrorMessage(send.error, FALLBACK_ERROR)}
+          </p>
         </div>
       ) : null}
 
       <TextField
-        field="fullName"
+        id="contact-fullName"
         label="Họ và tên"
         required
-        value={values.fullName}
-        error={errors.fullName}
+        error={errors.fullName?.message}
         disabled={sending}
-        onChange={setField}
+        registration={register("fullName")}
+        {...LIMIT_PROPS.fullName}
       />
 
       <div className="flex flex-wrap gap-5">
         <div className="min-w-[220px] flex-1">
           <TextField
-            field="email"
+            id="contact-email"
             label="Email"
             type="email"
             required
-            value={values.email}
-            error={errors.email}
+            error={errors.email?.message}
             disabled={sending}
-            onChange={setField}
+            registration={register("email")}
+            {...LIMIT_PROPS.email}
           />
         </div>
         <div className="min-w-[220px] flex-1">
           <TextField
-            field="phone"
+            id="contact-phone"
             label="Số điện thoại"
             type="tel"
             hint="Không bắt buộc"
-            value={values.phone}
-            error={errors.phone}
+            error={errors.phone?.message}
             disabled={sending}
-            onChange={setField}
+            registration={register("phone")}
+            {...LIMIT_PROPS.phone}
           />
         </div>
       </div>
 
       <TextField
-        field="subject"
+        id="contact-subject"
         label="Tiêu đề"
         hint="Không bắt buộc"
-        value={values.subject}
-        error={errors.subject}
+        error={errors.subject?.message}
         disabled={sending}
-        onChange={setField}
+        registration={register("subject")}
+        {...LIMIT_PROPS.subject}
       />
 
       <div>
-        <label
-          htmlFor="contact-message"
-          className="mb-1.5 block text-[14px] font-semibold"
-        >
+        <label htmlFor="contact-message" className="mb-1.5 block text-[14px] font-semibold">
           Nội dung <span className="text-muted">*</span>
         </label>
         <textarea
           id="contact-message"
           rows={6}
-          value={values.message}
           disabled={sending}
-          onChange={(event) => setField("message", event.target.value)}
           aria-invalid={Boolean(errors.message)}
           aria-describedby={errors.message ? "contact-message-error" : undefined}
           className={clsx(
@@ -217,18 +208,19 @@ export function ContactForm() {
             errors.message ? "border-ink" : "border-line focus:border-ink",
             sending && "opacity-60",
           )}
+          minLength={LIMITS.message.min}
+          maxLength={LIMITS.message.max}
+          {...register("message")}
         />
         <div className="mt-1.5 flex justify-between gap-4">
           {errors.message ? (
             <p id="contact-message-error" className="text-[13.5px] font-medium text-ink">
-              {errors.message}
+              {errors.message.message}
             </p>
           ) : (
             <span />
           )}
-          <span className="shrink-0 text-[13px] text-muted">
-            {values.message.trim().length} / 5000
-          </span>
+          <span className="shrink-0 text-[13px] text-muted">{messageLength} / {LIMITS.message.max}</span>
         </div>
       </div>
 
@@ -248,36 +240,29 @@ export function ContactForm() {
       </button>
 
       <p className="text-[13.5px] leading-relaxed text-muted">
-        Chúng mình chỉ dùng thông tin bạn gửi để trả lời đúng tin nhắn này, không
-        dùng vào việc gì khác và không chia sẻ cho bên thứ ba.
+        Chúng mình chỉ dùng thông tin bạn gửi để trả lời đúng tin nhắn này, không dùng vào việc
+        gì khác và không chia sẻ cho bên thứ ba.
       </p>
     </form>
   );
 }
 
 function TextField({
-  field,
+  id,
   label,
-  value,
   error,
-  type = "text",
   required = false,
   hint,
-  disabled,
-  onChange,
+  registration,
+  ...inputProps
 }: {
-  field: Field;
+  id: string;
   label: string;
-  value: string;
   error?: string;
-  type?: string;
   required?: boolean;
   hint?: string;
-  disabled?: boolean;
-  onChange: (field: Field, value: string) => void;
-}) {
-  const id = `contact-${field}`;
-
+  registration: UseFormRegisterReturn;
+} & Pick<ComponentProps<"input">, "type" | "disabled" | "minLength" | "maxLength">) {
   return (
     <div>
       <label htmlFor={id} className="mb-1.5 block text-[14px] font-semibold">
@@ -290,17 +275,15 @@ function TextField({
       </label>
       <input
         id={id}
-        type={type}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(field, event.target.value)}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
         className={clsx(
           "min-h-12 w-full rounded-[8px] border bg-surface px-4 text-[15px] outline-none transition-colors",
           error ? "border-ink" : "border-line focus:border-ink",
-          disabled && "opacity-60",
+          inputProps.disabled && "opacity-60",
         )}
+        {...inputProps}
+        {...registration}
       />
       {error ? (
         <p id={`${id}-error`} className="mt-1.5 text-[13.5px] font-medium text-ink">

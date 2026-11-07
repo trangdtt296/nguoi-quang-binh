@@ -1,325 +1,201 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { z } from "zod";
+import { Tabs } from "@/components/admin/ui";
 import {
-  Field,
-  Toast,
-  inputClass,
-  textareaClass,
-  useToast,
-} from "@/components/admin/ui";
+  AdminForm,
+  FormColumns,
+  FormImage,
+  FormPanel,
+  FormSelect,
+  FormTextarea,
+  TitleSlugFields,
+  toOptions,
+} from "@/components/admin/form-fields";
 import {
-  CoverImagePanel,
   FormHeader,
-  FormTabs,
   PublishTab,
+  SaveFirstNote,
   SeoTab,
-  toLocalInput,
+  useResourceForm,
 } from "@/components/admin/form-parts";
 import { CourseLessons } from "@/components/admin/course-lessons";
-import { api, ApiError } from "@/lib/admin/api-client";
-import { useAuth } from "@/lib/admin/auth-context";
-import type { AdminCategory, AdminCourse, ContentStatus } from "@/lib/admin/types";
-import { slugify } from "@/lib/slugify";
+import { useCategoryOptions } from "@/lib/admin/queries";
+import {
+  SEO_LIMITS,
+  firstTabWithError,
+  type FieldLimits,
+  orNull,
+  publishFields,
+  refineSchedule,
+  requiredText,
+  seoFields,
+  seoPublishDefaults,
+  seoPublishPayload,
+  text,
+} from "@/lib/admin/form-utils";
+import { FIELD_LIMITS as F } from "@/lib/field-limits";
+import type { AdminCourse } from "@/lib/admin/types";
+
+/** Giới hạn theo lib/field-limits.ts. */
+const LIMITS = {
+  title: F.courseTitle,
+  slug: F.slug,
+  description: F.courseDescription,
+  ...SEO_LIMITS,
+} satisfies FieldLimits;
+
+const schema = z
+  .object({
+    title: requiredText("Vui lòng nhập tên khóa học", LIMITS.title, "Tên quá ngắn"),
+    slug: text(LIMITS.slug),
+    description: text(LIMITS.description),
+    coverImageUrl: text(),
+    categoryId: z.string(),
+    isFeatured: z.boolean(),
+    ...seoFields,
+    ...publishFields,
+  })
+  .superRefine(refineSchedule);
+
+type CourseValues = z.infer<typeof schema>;
 
 type Tab = "info" | "lessons" | "seo" | "publish";
 
-interface FormState {
-  title: string;
-  slug: string;
-  description: string;
-  coverImageUrl: string;
-  categoryId: string;
-  status: ContentStatus;
-  publishedAt: string;
-  isFeatured: boolean;
-  seoTitle: string;
-  seoDescription: string;
+const TAB_FIELDS = {
+  info: ["title", "slug", "description"],
+  seo: ["seoTitle", "seoDescription"],
+  publish: ["publishedAt"],
+} satisfies Partial<Record<Tab, (keyof CourseValues)[]>>;
+
+function toFormValues(course?: AdminCourse): CourseValues {
+  return {
+    title: course?.title ?? "",
+    slug: course?.slug ?? "",
+    description: course?.description ?? "",
+    coverImageUrl: course?.coverImageUrl ?? "",
+    categoryId: course?.categoryId ?? "",
+    isFeatured: course?.isFeatured ?? false,
+    ...seoPublishDefaults(course),
+  };
 }
 
-const emptyForm: FormState = {
-  title: "",
-  slug: "",
-  description: "",
-  coverImageUrl: "",
-  categoryId: "",
-  status: "draft",
-  publishedAt: "",
-  isFeatured: false,
-  seoTitle: "",
-  seoDescription: "",
-};
+function toPayload(values: CourseValues) {
+  return {
+    title: values.title,
+    slug: values.slug || undefined,
+    description: orNull(values.description),
+    coverImageUrl: orNull(values.coverImageUrl),
+    categoryId: orNull(values.categoryId),
+    isFeatured: values.isFeatured,
+    ...seoPublishPayload(values),
+  };
+}
+
+const publicPath = (slug: string) => `/goc-hoc-tap/${slug}`;
 
 export function CourseForm({ course }: { course?: AdminCourse }) {
-  const router = useRouter();
-  const { isAdmin } = useAuth();
-  const { toast, showSuccess, showError, dismiss } = useToast();
-
   const [tab, setTab] = useState<Tab>("info");
-  const [form, setForm] = useState<FormState>(
-    course
-      ? {
-          title: course.title,
-          slug: course.slug,
-          description: course.description ?? "",
-          coverImageUrl: course.coverImageUrl ?? "",
-          categoryId: course.categoryId ?? "",
-          status: course.status,
-          publishedAt: toLocalInput(course.publishedAt),
-          isFeatured: course.isFeatured,
-          seoTitle: course.seoTitle ?? "",
-          seoDescription: course.seoDescription ?? "",
-        }
-      : emptyForm,
-  );
+  const categories = useCategoryOptions("learning");
 
-  const [categories, setCategories] = useState<AdminCategory[]>([]);
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
-  const [saving, setSaving] = useState(false);
-  const [slugTouched, setSlugTouched] = useState(Boolean(course));
+  const { form, onSubmit, saving } = useResourceForm({
+    endpoint: "/admin/courses",
+    record: course,
+    schema,
+    defaultValues: toFormValues(course),
+    toPayload,
+    createdMessage: "Đã tạo khóa học, giờ thêm bài học vào",
+  });
 
-  const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-    setForm((current) => ({ ...current, [key]: value }));
-    setErrors((current) => ({ ...current, [key]: undefined }));
-  };
-
-  useEffect(() => {
-    let active = true;
-    api
-      .get<AdminCategory[]>("/categories?type=learning")
-      .then(({ data }) => {
-        if (active) setCategories(data);
-      })
-      .catch(() => {
-        if (active) setCategories([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const validate = (): boolean => {
-    const found: Partial<Record<keyof FormState, string>> = {};
-
-    if (!form.title.trim()) found.title = "Vui lòng nhập tên khóa học";
-    else if (form.title.trim().length < 3) found.title = "Tên quá ngắn";
-
-    if (form.description.length > 1000)
-      found.description = "Giới thiệu tối đa 1000 ký tự";
-    if (form.seoDescription.length > 320)
-      found.seoDescription = "Mô tả SEO tối đa 320 ký tự";
-
-    if (form.status === "scheduled" && !form.publishedAt) {
-      found.publishedAt = "Chọn thời điểm xuất bản khi đặt lịch";
-    }
-
-    setErrors(found);
-    if (Object.keys(found).length > 0) {
-      if (found.title || found.description) setTab("info");
-      else if (found.seoDescription) setTab("seo");
-      else setTab("publish");
-      return false;
-    }
-    return true;
-  };
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!validate()) return;
-
-    setSaving(true);
-    try {
-      const payload = {
-        title: form.title.trim(),
-        slug: form.slug.trim() || undefined,
-        description: form.description.trim() || null,
-        coverImageUrl: form.coverImageUrl.trim() || null,
-        categoryId: form.categoryId || null,
-        status: form.status,
-        publishedAt: form.publishedAt
-          ? new Date(form.publishedAt).toISOString()
-          : null,
-        isFeatured: form.isFeatured,
-        seoTitle: form.seoTitle.trim() || null,
-        seoDescription: form.seoDescription.trim() || null,
-      };
-
-      if (course) {
-        await api.patch(`/admin/courses/${course.id}`, payload);
-        showSuccess("Đã lưu thay đổi");
-      } else {
-        const { data } = await api.post<AdminCourse>("/admin/courses", payload);
-        showSuccess("Đã tạo khóa học, giờ thêm bài học vào");
-        router.replace(`/admin/courses/${data.id}/edit`);
-      }
-    } catch (error) {
-      if (error instanceof ApiError && error.details?.length) {
-        showError(`${error.message}: ${error.details.map((d) => d.message).join(", ")}`);
-      } else {
-        showError(error instanceof ApiError ? error.message : "Không lưu được");
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
+  const tabs = [
+    ["info", "Thông tin"],
+    ["lessons", course ? `Bài học (${course.lessonCount})` : "Bài học"],
+    ["seo", "SEO"],
+    ["publish", "Xuất bản"],
+  ] as const;
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-6">
+    <AdminForm
+      form={form}
+      idPrefix="course"
+      limits={LIMITS}
+      onSubmit={onSubmit}
+      onInvalid={(errors) => setTab(firstTabWithError(errors, TAB_FIELDS) ?? tab)}
+      className="flex flex-col gap-6"
+    >
       <FormHeader
         title={course ? "Sửa khóa học" : "Thêm khóa học"}
         backHref="/admin/courses"
-        previewHref={
-          course && course.status === "published"
-            ? `/goc-hoc-tap/${form.slug}`
-            : undefined
-        }
+        previewPath={course?.status === "published" ? publicPath : undefined}
         saving={saving}
         saveLabel={course ? "Lưu thay đổi" : "Tạo khóa học"}
       />
 
-      <FormTabs<Tab>
-        active={tab}
-        onChange={setTab}
-        tabs={[
-          ["info", "Thông tin"],
-          [
-            "lessons",
-            course ? `Bài học (${course.lessonCount})` : "Bài học",
-          ],
-          ["seo", "SEO"],
-          ["publish", "Xuất bản"],
-        ]}
-      />
+      <Tabs tabs={tabs} active={tab} onChange={setTab} />
 
       {tab === "info" ? (
-        <div className="flex flex-wrap gap-6">
-          <div className="flex min-w-0 flex-[999_1_480px] flex-col gap-5">
-            <Field
-              label="Tên khóa học"
-              htmlFor="course-title"
-              error={errors.title}
-              required
-            >
-              <input
-                id="course-title"
-                value={form.title}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setField("title", value);
-                  if (!slugTouched) setField("slug", slugify(value));
-                }}
-                aria-invalid={Boolean(errors.title)}
-                className={inputClass}
+        <FormColumns
+          mainBasis="480px"
+          main={
+            <>
+              <TitleSlugFields
+                titleName="title"
+                titleLabel="Tên khóa học"
+                slugHint="Để trống thì hệ thống tự sinh từ tên khóa học."
+                autoSlug={!course}
               />
-            </Field>
-
-            <Field
-              label="Đường dẫn"
-              htmlFor="course-slug"
-              hint="Để trống thì hệ thống tự sinh từ tên khóa học."
-            >
-              <input
-                id="course-slug"
-                value={form.slug}
-                onChange={(event) => {
-                  setSlugTouched(true);
-                  setField("slug", event.target.value);
-                }}
-                className={inputClass}
-              />
-            </Field>
-
-            <Field
-              label="Giới thiệu khóa học"
-              htmlFor="course-description"
-              error={errors.description}
-              hint={`Học xong biết làm gì, phù hợp với ai. ${form.description.length}/1000 ký tự.`}
-            >
-              <textarea
-                id="course-description"
+              <FormTextarea
+                name="description"
+                label="Giới thiệu khóa học"
                 rows={6}
-                value={form.description}
-                onChange={(event) => setField("description", event.target.value)}
-                aria-invalid={Boolean(errors.description)}
-                className={textareaClass}
+                hint={(length) =>
+                  `Học xong biết làm gì, phù hợp với ai. ${length}/${LIMITS.description.max} ký tự.`
+                }
               />
-            </Field>
-          </div>
-
-          <div className="flex min-w-0 flex-1 basis-[280px] flex-col gap-5">
-            <CoverImagePanel
-              value={form.coverImageUrl}
-              onChange={(url) => setField("coverImageUrl", url)}
-            />
-
-            <div className="rounded-[12px] border border-line bg-surface p-5">
-              <Field
-                label="Lĩnh vực"
-                htmlFor="course-category"
-                hint="Lập trình, tiếng Anh, tiếng Nhật… Người học vào một lĩnh vực là thấy toàn bộ khóa trong đó."
-              >
-                <select
-                  id="course-category"
-                  value={form.categoryId}
-                  onChange={(event) => setField("categoryId", event.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">Chưa phân loại</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+          side={
+            <>
+              <FormImage name="coverImageUrl" />
+              <FormPanel>
+                <FormSelect
+                  name="categoryId"
+                  label="Lĩnh vực"
+                  placeholder="Chưa phân loại"
+                  hint="Lập trình, tiếng Anh, tiếng Nhật… Người học vào một lĩnh vực là thấy toàn bộ khóa trong đó."
+                  options={toOptions(categories, (category) => category.name)}
+                />
+              </FormPanel>
+            </>
+          }
+        />
       ) : null}
 
+      {/*
+        Bài học có form và luồng lưu riêng, nên nằm ngoài form khóa học về
+        mặt dữ liệu — chỉ hiển thị chung trong tab này.
+      */}
       {tab === "lessons" ? (
         course ? (
           <CourseLessons courseId={course.id} />
         ) : (
-          <p className="max-w-[60ch] rounded-[8px] border border-line bg-surface-alt px-4 py-3 text-[14px] leading-relaxed text-muted">
-            Lưu khóa học trước đã. Có khóa rồi mới thêm bài vào được.
-          </p>
+          <SaveFirstNote>Lưu khóa học trước đã. Có khóa rồi mới thêm bài vào được.</SaveFirstNote>
         )
       ) : null}
 
       {tab === "seo" ? (
-        <SeoTab
-          idPrefix="course"
-          title={form.title}
-          seoTitle={form.seoTitle}
-          seoDescription={form.seoDescription}
-          fallbackDescription={form.description}
-          publicPath={`/goc-hoc-tap/${form.slug}`}
-          error={errors.seoDescription}
-          onChange={setField}
-        />
+        <SeoTab titleField="title" fallbackField="description" publicPath={publicPath} />
       ) : null}
 
       {tab === "publish" ? (
         <PublishTab
-          idPrefix="course"
-          status={form.status}
-          publishedAt={form.publishedAt}
-          isFeatured={form.isFeatured}
-          featuredLabel="Khóa học nổi bật"
-          featuredHint="Được ưu tiên hiện ở khối Góc học tập trên trang chủ."
-          isAdmin={isAdmin}
-          error={errors.publishedAt}
-          onChangeStatus={(status) => setField("status", status)}
-          onChangePublishedAt={(value) => setField("publishedAt", value)}
-          onChangeFeatured={(value) => setField("isFeatured", value)}
+          featured={{
+            label: "Khóa học nổi bật",
+            hint: "Được ưu tiên hiện ở khối Góc học tập trên trang chủ.",
+          }}
         />
       ) : null}
-
-      {toast ? (
-        <Toast kind={toast.kind} message={toast.message} onDismiss={dismiss} />
-      ) : null}
-    </form>
+    </AdminForm>
   );
 }

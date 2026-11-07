@@ -1,32 +1,40 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  Pencil,
-  Plus,
-  Trash2,
-  Video,
-  X,
-} from "lucide-react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, Video } from "lucide-react";
 import {
   AdminButton,
   AdminEmpty,
-  AdminError,
-  AdminLoading,
   ConfirmDialog,
-  Field,
+  DialogHeader,
+  IconButton,
+  Modal,
+  QueryState,
   StatusBadge,
-  Toast,
-  inputClass,
-  textareaClass,
   useToast,
 } from "./ui";
-import { RichTextEditor } from "./rich-text-editor";
-import { api, ApiError } from "@/lib/admin/api-client";
+import { AdminForm, FormInput, FormRichText, FormSelect, FormTextarea } from "./form-fields";
+import { api } from "@/lib/admin/api-client";
 import { useAuth } from "@/lib/admin/auth-context";
-import type { AdminLesson, ContentStatus } from "@/lib/admin/types";
+import {
+  CONTENT_STATUSES,
+  optionalNumber,
+  optionalUrl,
+  orNull,
+  requiredText,
+  text,
+  toNumberOrNull,
+  type FieldLimits,
+} from "@/lib/admin/form-utils";
+import { queryKeys } from "@/lib/admin/queries";
+import { FIELD_LIMITS as F } from "@/lib/field-limits";
+import type { AdminLesson } from "@/lib/admin/types";
+import { swap } from "@/lib/array";
+import { getErrorMessage } from "@/lib/http";
 
 /**
  * Quản lý bài học của một khóa học.
@@ -35,85 +43,71 @@ import type { AdminLesson, ContentStatus } from "@/lib/admin/types";
  * phải hiểu điều đó: họ thêm và sắp xếp bài ngay trong khóa học. Vì vậy phần
  * này có form riêng gọn hơn form bài viết, chỉ những trường bài học cần.
  */
+
+/** Đổi bài học cũng đổi số bài của khóa và nội dung thùng rác bài viết. */
+function useInvalidateLessons() {
+  const queryClient = useQueryClient();
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.resource("/admin/courses") }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.resource("/admin/articles") }),
+    ]);
+}
+
 export function CourseLessons({ courseId }: { courseId: string }) {
   const { isAdmin } = useAuth();
-  const { toast, showSuccess, showError, dismiss } = useToast();
+  const { showSuccess, showError } = useToast();
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateLessons();
 
-  const [lessons, setLessons] = useState<AdminLesson[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const [editing, setEditing] = useState<AdminLesson | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [dialog, setDialog] = useState<{ lesson: AdminLesson | null } | null>(null);
   const [deleting, setDeleting] = useState<AdminLesson | null>(null);
-  const [deletePending, setDeletePending] = useState(false);
-  const [savingOrder, setSavingOrder] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const { data } = await api.get<AdminLesson[]>(
-        `/admin/courses/${courseId}/lessons`,
-      );
-      setLessons(data);
-    } catch (caught) {
-      setError(
-        caught instanceof ApiError ? caught.message : "Không tải được danh sách bài",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [courseId]);
+  const lessonsKey = ["/admin/courses", courseId, "lessons"];
+  const query = useQuery({
+    queryKey: lessonsKey,
+    queryFn: async () =>
+      (await api.get<AdminLesson[]>(`/admin/courses/${courseId}/lessons`)).data,
+  });
+  const lessons = query.data ?? [];
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  /** Gửi thứ tự mới lên server; cũng là chỗ cập nhật lại số bài của khóa. */
-  const persistOrder = async (ordered: AdminLesson[]) => {
-    setSavingOrder(true);
-    try {
-      await api.patch(`/admin/courses/${courseId}/reorder`, {
+  /** Gửi thứ tự mới lên server; cũng là chỗ server cập nhật lại số bài của khóa. */
+  const reorder = useMutation({
+    mutationFn: (ordered: AdminLesson[]) =>
+      api.patch(`/admin/courses/${courseId}/reorder`, {
         lessonIds: ordered.map((lesson) => lesson.id),
-      });
-      await load();
-    } catch (caught) {
-      showError(
-        caught instanceof ApiError ? caught.message : "Không lưu được thứ tự bài",
-      );
-      await load();
-    } finally {
-      setSavingOrder(false);
-    }
-  };
+      }),
+    // Đổi chỗ ngay trên giao diện để không phải chờ server.
+    onMutate: async (ordered) => {
+      await queryClient.cancelQueries({ queryKey: lessonsKey });
+      queryClient.setQueryData(lessonsKey, ordered);
+    },
+    onError: (error) => showError(getErrorMessage(error, "Không lưu được thứ tự bài")),
+    onSettled: invalidate,
+  });
 
-  const move = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= lessons.length) return;
-
-    const next = [...lessons];
-    [next[index], next[target]] = [next[target], next[index]];
-    // Đổi chỗ ngay trên giao diện để không phải chờ server, rồi mới lưu.
-    setLessons(next);
-    void persistOrder(next);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleting) return;
-    setDeletePending(true);
-    try {
-      await api.del(`/admin/articles/${deleting.id}`);
-      const remaining = lessons.filter((lesson) => lesson.id !== deleting.id);
+  const remove = useMutation({
+    mutationFn: (lesson: AdminLesson) => api.del(`/admin/articles/${lesson.id}`),
+    onSuccess: (_data, lesson) => {
+      showSuccess(`Đã chuyển bài "${lesson.title}" vào thùng rác`);
       setDeleting(null);
-      showSuccess(`Đã chuyển bài "${deleting.title}" vào thùng rác`);
-      await persistOrder(remaining);
-    } catch (caught) {
-      showError(caught instanceof ApiError ? caught.message : "Không xóa được bài");
-    } finally {
-      setDeletePending(false);
-    }
+      // Đánh lại số thứ tự cho các bài còn lại.
+      reorder.mutate(lessons.filter((item) => item.id !== lesson.id));
+    },
+    onError: (error) => showError(getErrorMessage(error, "Không xóa được bài")),
+  });
+
+  const move = (index: number, target: number) => {
+    if (target < 0 || target >= lessons.length) return;
+    reorder.mutate(swap(lessons, index, target));
   };
+
+  const addButton = (
+    <AdminButton onClick={() => setDialog({ lesson: null })} disabled={reorder.isPending}>
+      <Plus size={16} aria-hidden="true" />
+      Thêm bài học
+    </AdminButton>
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -121,123 +115,97 @@ export function CourseLessons({ courseId }: { courseId: string }) {
         <div>
           <h2 className="text-[18px] font-semibold">Bài học</h2>
           <p className="mt-1 max-w-[70ch] text-[14px] leading-relaxed text-muted">
-            Thứ tự ở đây chính là thứ tự người học thấy trên website. Mỗi bài có thể
-            kèm video, không bắt buộc.
+            Thứ tự ở đây chính là thứ tự người học thấy trên website. Mỗi bài có thể kèm
+            video, không bắt buộc.
           </p>
         </div>
-        <AdminButton onClick={() => setCreating(true)} disabled={savingOrder}>
-          <Plus size={16} aria-hidden="true" />
-          Thêm bài học
-        </AdminButton>
+        {addButton}
       </div>
 
-      {loading ? (
-        <AdminLoading label="Đang tải bài học" />
-      ) : error ? (
-        <AdminError message={error} onRetry={load} />
-      ) : lessons.length === 0 ? (
-        <AdminEmpty
-          title="Khóa học chưa có bài nào"
-          description="Thêm bài đầu tiên để khóa học có nội dung."
-          action={
-            <AdminButton onClick={() => setCreating(true)}>
-              <Plus size={16} aria-hidden="true" />
-              Thêm bài học
-            </AdminButton>
-          }
-        />
-      ) : (
-        <ol className="flex flex-col gap-2">
-          {lessons.map((lesson, index) => (
-            <li
-              key={lesson.id}
-              className="flex flex-wrap items-center gap-3 rounded-[8px] border border-line bg-surface px-4 py-3"
-            >
-              <span className="w-7 shrink-0 text-[14px] font-semibold text-muted">
-                {index + 1}.
-              </span>
-
-              <span className="min-w-[180px] flex-1 text-[14.5px] font-medium">
-                {lesson.title}
-                {lesson.videoUrl ? (
-                  <Video
-                    size={14}
-                    className="ml-2 inline-block align-[-2px] text-muted"
-                    aria-label="Có video"
-                  />
-                ) : null}
-                {lesson.durationMinutes ? (
-                  <span className="ml-2 text-[13px] font-normal text-muted">
-                    {lesson.durationMinutes} phút
+      <QueryState query={query} loadingLabel="Đang tải bài học" errorMessage="Không tải được danh sách bài">
+        {(items) =>
+          items.length === 0 ? (
+            <AdminEmpty
+              title="Khóa học chưa có bài nào"
+              description="Thêm bài đầu tiên để khóa học có nội dung."
+              action={addButton}
+            />
+          ) : (
+            <ol className="flex flex-col gap-2">
+              {items.map((lesson, index) => (
+                <li
+                  key={lesson.id}
+                  className="flex flex-wrap items-center gap-3 rounded-[8px] border border-line bg-surface px-4 py-3"
+                >
+                  <span className="w-7 shrink-0 text-[14px] font-semibold text-muted">
+                    {index + 1}.
                   </span>
-                ) : null}
-              </span>
 
-              <StatusBadge status={lesson.status} />
+                  <span className="min-w-[180px] flex-1 text-[14.5px] font-medium">
+                    {lesson.title}
+                    {lesson.videoUrl ? (
+                      <Video
+                        size={14}
+                        className="ml-2 inline-block align-[-2px] text-muted"
+                        aria-label="Có video"
+                      />
+                    ) : null}
+                    {lesson.durationMinutes ? (
+                      <span className="ml-2 text-[13px] font-normal text-muted">
+                        {lesson.durationMinutes} phút
+                      </span>
+                    ) : null}
+                  </span>
 
-              <div className="flex shrink-0 gap-1">
-                <button
-                  type="button"
-                  onClick={() => move(index, -1)}
-                  disabled={index === 0 || savingOrder}
-                  title="Chuyển lên"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-[6px] text-muted transition-colors hover:bg-primary-50 hover:text-ink disabled:opacity-40"
-                >
-                  <ArrowUp size={15} aria-hidden="true" />
-                  <span className="sr-only">Chuyển bài {lesson.title} lên</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => move(index, 1)}
-                  disabled={index === lessons.length - 1 || savingOrder}
-                  title="Chuyển xuống"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-[6px] text-muted transition-colors hover:bg-primary-50 hover:text-ink disabled:opacity-40"
-                >
-                  <ArrowDown size={15} aria-hidden="true" />
-                  <span className="sr-only">Chuyển bài {lesson.title} xuống</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditing(lesson)}
-                  title="Sửa bài"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-[6px] text-muted transition-colors hover:bg-primary-50 hover:text-ink"
-                >
-                  <Pencil size={15} aria-hidden="true" />
-                  <span className="sr-only">Sửa bài {lesson.title}</span>
-                </button>
-                {isAdmin ? (
-                  <button
-                    type="button"
-                    onClick={() => setDeleting(lesson)}
-                    title="Chuyển bài vào thùng rác"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-[6px] text-muted transition-colors hover:bg-primary-50 hover:text-ink"
-                  >
-                    <Trash2 size={15} aria-hidden="true" />
-                    <span className="sr-only">Xóa bài {lesson.title}</span>
-                  </button>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ol>
-      )}
+                  <StatusBadge status={lesson.status} />
 
-      {creating || editing ? (
+                  <div className="flex shrink-0 gap-1">
+                    <IconButton
+                      label={`Chuyển bài ${lesson.title} lên`}
+                      title="Chuyển lên"
+                      disabled={index === 0 || reorder.isPending}
+                      onClick={() => move(index, index - 1)}
+                    >
+                      <ArrowUp size={15} aria-hidden="true" />
+                    </IconButton>
+                    <IconButton
+                      label={`Chuyển bài ${lesson.title} xuống`}
+                      title="Chuyển xuống"
+                      disabled={index === items.length - 1 || reorder.isPending}
+                      onClick={() => move(index, index + 1)}
+                    >
+                      <ArrowDown size={15} aria-hidden="true" />
+                    </IconButton>
+                    <IconButton
+                      label={`Sửa bài ${lesson.title}`}
+                      title="Sửa bài"
+                      onClick={() => setDialog({ lesson })}
+                    >
+                      <Pencil size={15} aria-hidden="true" />
+                    </IconButton>
+                    {isAdmin ? (
+                      <IconButton
+                        label={`Xóa bài ${lesson.title}`}
+                        title="Chuyển bài vào thùng rác"
+                        onClick={() => setDeleting(lesson)}
+                      >
+                        <Trash2 size={15} aria-hidden="true" />
+                      </IconButton>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )
+        }
+      </QueryState>
+
+      {dialog ? (
         <LessonDialog
           courseId={courseId}
-          lesson={editing}
+          lesson={dialog.lesson}
           nextOrder={lessons.length + 1}
-          onClose={() => {
-            setCreating(false);
-            setEditing(null);
-          }}
-          onSaved={async (message) => {
-            setCreating(false);
-            setEditing(null);
-            showSuccess(message);
-            await load();
-          }}
-          onError={showError}
+          onClose={() => setDialog(null)}
         />
       ) : null}
 
@@ -250,239 +218,156 @@ export function CourseLessons({ courseId }: { courseId: string }) {
             : ""
         }
         confirmLabel="Chuyển vào thùng rác"
-        loading={deletePending}
-        onConfirm={confirmDelete}
+        loading={remove.isPending}
+        onConfirm={() => deleting && remove.mutate(deleting)}
         onCancel={() => setDeleting(null)}
       />
-
-      {toast ? (
-        <Toast kind={toast.kind} message={toast.message} onDismiss={dismiss} />
-      ) : null}
     </div>
   );
 }
+
+/* ---------- Hộp thoại thêm / sửa bài ---------- */
+
+/** Bài học là bài viết type = lesson: giới hạn theo articleCreateSchema ở server. */
+const LESSON_LIMITS = {
+  title: F.lessonTitle,
+  excerpt: F.summary,
+} satisfies FieldLimits;
+
+const lessonSchema = z.object({
+  title: requiredText("Tiêu đề bài phải dài ít nhất 3 ký tự", LESSON_LIMITS.title),
+  excerpt: text(LESSON_LIMITS.excerpt),
+  contentHtml: z.string(),
+  videoUrl: optionalUrl("Đường dẫn video không hợp lệ, cần dạng https://…"),
+  durationMinutes: optionalNumber({
+    min: 1,
+    max: 600,
+    integer: true,
+    message: "Thời lượng phải là số nguyên từ 1 đến 600 phút",
+  }),
+  status: z.enum(CONTENT_STATUSES),
+});
+
+type LessonValues = z.infer<typeof lessonSchema>;
 
 function LessonDialog({
   courseId,
   lesson,
   nextOrder,
   onClose,
-  onSaved,
-  onError,
 }: {
   courseId: string;
   lesson: AdminLesson | null;
   /** Thứ tự gán cho bài mới — xếp cuối danh sách hiện tại. */
   nextOrder: number;
   onClose: () => void;
-  onSaved: (message: string) => void | Promise<void>;
-  onError: (message: string) => void;
 }) {
   const { isAdmin } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const invalidate = useInvalidateLessons();
 
-  const [title, setTitle] = useState(lesson?.title ?? "");
-  const [excerpt, setExcerpt] = useState(lesson?.excerpt ?? "");
-  const [contentHtml, setContentHtml] = useState(lesson?.contentHtml ?? "");
-  const [videoUrl, setVideoUrl] = useState(lesson?.videoUrl ?? "");
-  const [durationMinutes, setDurationMinutes] = useState(
-    lesson?.durationMinutes != null ? String(lesson.durationMinutes) : "",
-  );
-  const [status, setStatus] = useState<ContentStatus>(lesson?.status ?? "draft");
+  const form = useForm<LessonValues>({
+    resolver: zodResolver(lessonSchema),
+    defaultValues: {
+      title: lesson?.title ?? "",
+      excerpt: lesson?.excerpt ?? "",
+      contentHtml: lesson?.contentHtml ?? "",
+      videoUrl: lesson?.videoUrl ?? "",
+      durationMinutes: lesson?.durationMinutes != null ? String(lesson.durationMinutes) : "",
+      status: lesson?.status ?? "draft",
+    },
+  });
 
-  const [titleError, setTitleError] = useState("");
-  const [videoError, setVideoError] = useState("");
-  const [durationError, setDurationError] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-
-    let invalid = false;
-
-    if (title.trim().length < 3) {
-      setTitleError("Tiêu đề bài phải dài ít nhất 3 ký tự");
-      invalid = true;
-    }
-
-    if (videoUrl.trim()) {
-      try {
-        new URL(videoUrl.trim());
-      } catch {
-        setVideoError("Đường dẫn video không hợp lệ, cần dạng https://…");
-        invalid = true;
-      }
-    }
-
-    const duration = durationMinutes.trim();
-    if (duration) {
-      const parsed = Number(duration);
-      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 600) {
-        setDurationError("Thời lượng phải là số nguyên từ 1 đến 600 phút");
-        invalid = true;
-      }
-    }
-
-    if (invalid) return;
-
-    setSaving(true);
-    try {
+  const save = useMutation({
+    mutationFn: (values: LessonValues) => {
       const payload = {
-        title: title.trim(),
-        excerpt: excerpt.trim() || null,
-        contentHtml: contentHtml || null,
+        title: values.title,
+        excerpt: orNull(values.excerpt),
+        contentHtml: orNull(values.contentHtml),
         content: {},
         type: "lesson" as const,
         courseId,
-        videoUrl: videoUrl.trim() || null,
-        durationMinutes: duration ? Number(duration) : null,
-        status,
+        videoUrl: orNull(values.videoUrl),
+        durationMinutes: toNumberOrNull(values.durationMinutes),
+        status: values.status,
       };
+      return lesson
+        ? api.patch(`/admin/articles/${lesson.id}`, payload)
+        : api.post("/admin/articles", { ...payload, lessonOrder: nextOrder });
+    },
+    onSuccess: async () => {
+      showSuccess(lesson ? "Đã lưu bài học" : "Đã thêm bài học");
+      onClose();
+      await invalidate();
+    },
+    onError: (error) => showError(getErrorMessage(error, "Không lưu được bài")),
+  });
 
-      if (lesson) {
-        await api.patch(`/admin/articles/${lesson.id}`, payload);
-        await onSaved("Đã lưu bài học");
-      } else {
-        await api.post("/admin/articles", { ...payload, lessonOrder: nextOrder });
-        await onSaved("Đã thêm bài học");
-      }
-    } catch (caught) {
-      if (caught instanceof ApiError && caught.details?.length) {
-        onError(
-          `${caught.message}: ${caught.details.map((d) => d.message).join(", ")}`,
-        );
-      } else {
-        onError(caught instanceof ApiError ? caught.message : "Không lưu được bài");
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
+  const statusOptions = [
+    { value: "draft", label: "Bản nháp" },
+    ...(isAdmin
+      ? [
+          { value: "published", label: "Xuất bản" },
+          { value: "archived", label: "Lưu trữ" },
+        ]
+      : []),
+  ];
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-abyss/60 p-4"
-      onClick={onClose}
-    >
-      <form
-        onSubmit={submit}
-        noValidate
-        onClick={(event) => event.stopPropagation()}
-        className="my-8 flex w-full max-w-[720px] flex-col gap-5 rounded-[12px] bg-surface p-6"
+    <Modal onClose={onClose} labelledBy="lesson-dialog-title" align="top" className="max-w-[720px]">
+      <AdminForm
+        form={form}
+        idPrefix="lesson"
+        limits={LESSON_LIMITS}
+        onSubmit={(values) => save.mutate(values)}
+        className="flex flex-col gap-5"
       >
-        <div className="flex items-start justify-between gap-4">
-          <h2 className="text-[19px] font-semibold">
-            {lesson ? "Sửa bài học" : "Thêm bài học"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] text-muted hover:bg-primary-50 hover:text-ink"
-          >
-            <X size={18} aria-hidden="true" />
-            <span className="sr-only">Đóng</span>
-          </button>
-        </div>
+        <DialogHeader
+          id="lesson-dialog-title"
+          title={lesson ? "Sửa bài học" : "Thêm bài học"}
+          onClose={onClose}
+        />
 
-        <Field label="Tiêu đề bài" htmlFor="lesson-title" error={titleError} required>
-          <input
-            id="lesson-title"
-            value={title}
-            onChange={(event) => {
-              setTitle(event.target.value);
-              setTitleError("");
-            }}
-            aria-invalid={Boolean(titleError)}
-            className={inputClass}
-          />
-        </Field>
-
-        <Field
+        <FormInput name="title" label="Tiêu đề bài" required />
+        <FormTextarea
+          name="excerpt"
           label="Mô tả ngắn"
-          htmlFor="lesson-excerpt"
+          rows={2}
           hint="Một hai câu giới thiệu bài này học gì."
-        >
-          <textarea
-            id="lesson-excerpt"
-            rows={2}
-            value={excerpt}
-            onChange={(event) => setExcerpt(event.target.value)}
-            className={textareaClass}
-          />
-        </Field>
+        />
 
         <div className="flex flex-wrap gap-5">
           <div className="min-w-[240px] flex-[2]">
-            <Field
+            <FormInput
+              name="videoUrl"
               label="Đường dẫn video"
-              htmlFor="lesson-video-url"
-              error={videoError}
+              placeholder="https://www.youtube.com/watch?v=…"
               hint="Dán link YouTube hoặc Vimeo. Để trống nếu bài chỉ có chữ."
-            >
-              <input
-                id="lesson-video-url"
-                value={videoUrl}
-                onChange={(event) => {
-                  setVideoUrl(event.target.value);
-                  setVideoError("");
-                }}
-                placeholder="https://www.youtube.com/watch?v=…"
-                aria-invalid={Boolean(videoError)}
-                className={inputClass}
-              />
-            </Field>
+            />
           </div>
           <div className="min-w-[140px] flex-1">
-            <Field
+            <FormInput
+              name="durationMinutes"
               label="Thời lượng (phút)"
-              htmlFor="lesson-duration"
-              error={durationError}
-            >
-              <input
-                id="lesson-duration"
-                inputMode="numeric"
-                value={durationMinutes}
-                onChange={(event) => {
-                  setDurationMinutes(event.target.value);
-                  setDurationError("");
-                }}
-                aria-invalid={Boolean(durationError)}
-                className={inputClass}
-              />
-            </Field>
+              inputMode="numeric"
+              maxLength={3}
+              hint="Từ 1 đến 600 phút."
+            />
           </div>
         </div>
 
-        <div>
-          <p className="mb-1.5 text-[14px] font-semibold">Nội dung bài</p>
-          <RichTextEditor value={contentHtml} onChange={setContentHtml} />
-        </div>
-
-        <Field label="Trạng thái" htmlFor="lesson-status">
-          <select
-            id="lesson-status"
-            value={status}
-            onChange={(event) => setStatus(event.target.value as ContentStatus)}
-            className={inputClass}
-          >
-            <option value="draft">Bản nháp</option>
-            {isAdmin ? (
-              <>
-                <option value="published">Xuất bản</option>
-                <option value="archived">Lưu trữ</option>
-              </>
-            ) : null}
-          </select>
-        </Field>
+        <FormRichText name="contentHtml" label="Nội dung bài" />
+        <FormSelect name="status" label="Trạng thái" options={statusOptions} />
 
         <div className="flex justify-end gap-3">
-          <AdminButton variant="ghost" onClick={onClose} disabled={saving}>
+          <AdminButton variant="ghost" onClick={onClose} disabled={save.isPending}>
             Hủy
           </AdminButton>
-          <AdminButton type="submit" loading={saving}>
+          <AdminButton type="submit" loading={save.isPending}>
             {lesson ? "Lưu bài học" : "Thêm bài học"}
           </AdminButton>
         </div>
-      </form>
-    </div>
+      </AdminForm>
+    </Modal>
   );
 }

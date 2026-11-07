@@ -1,36 +1,96 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
-import clsx from "clsx";
-import { ArrowLeft, ExternalLink, ImagePlus, X } from "lucide-react";
-import { AdminButton, Field, inputClass, textareaClass } from "./ui";
-import { MediaPicker } from "./media-picker";
-import type { ContentStatus } from "@/lib/admin/types";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ExternalLink } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  useForm,
+  useWatch,
+  type DefaultValues,
+  type FieldValues,
+} from "react-hook-form";
+import type { z } from "zod";
+import { AdminButton, useToast } from "./ui";
+import { FormCheckbox, FormInput, FormSelect, FormTextarea } from "./form-fields";
+import { useAuth } from "@/lib/admin/auth-context";
+import { useSaveMutation } from "@/lib/admin/queries";
+import { FIELD_LIMITS as F } from "@/lib/field-limits";
+import { getErrorMessage } from "@/lib/http";
 
 /**
  * Các mảnh dùng chung cho form nội dung.
  *
  * Bài viết, điểm đến, ẩm thực, sự kiện, khóa học và album đều có cùng một
- * bộ phần: thanh đầu trang, tab, ảnh bìa, SEO, xuất bản. Tách ra để sửa
- * một lần là tất cả đổi theo, nhưng vẫn để mỗi form tự lắp theo nhu cầu
- * riêng thay vì nhét hết vào một component vạn năng.
+ * bộ phần: thanh đầu trang, ảnh bìa, SEO, xuất bản, và cùng một luồng lưu.
+ * Tách ra để sửa một lần là tất cả đổi theo, nhưng vẫn để mỗi form tự lắp
+ * theo nhu cầu riêng thay vì nhét hết vào một component vạn năng.
  */
+
+/* ---------- Luồng lưu ---------- */
+
+/**
+ * Tạo form và luồng lưu chung: tạo mới xong thì chuyển sang trang sửa, sửa
+ * xong thì giữ nguyên trang và đánh dấu form là "đã lưu".
+ */
+export function useResourceForm<TValues extends FieldValues, TRecord extends { id: string }>({
+  endpoint,
+  record,
+  schema,
+  defaultValues,
+  toPayload,
+  createdMessage,
+}: {
+  /** Đường dẫn API, đồng thời là đường dẫn trang quản trị, ví dụ "/admin/foods". */
+  endpoint: string;
+  record?: TRecord;
+  schema: z.ZodType<TValues, z.ZodTypeDef, TValues>;
+  defaultValues: DefaultValues<TValues>;
+  toPayload: (values: TValues) => unknown;
+  createdMessage: string;
+}) {
+  const router = useRouter();
+  const { showSuccess, showError } = useToast();
+  const form = useForm<TValues>({ resolver: zodResolver(schema), defaultValues });
+  const save = useSaveMutation<TRecord>(endpoint, record?.id);
+
+  const onSubmit = (values: TValues) =>
+    save.mutate(toPayload(values), {
+      onSuccess: (saved) => {
+        if (record) {
+          showSuccess("Đã lưu thay đổi");
+          // Giá trị vừa lưu thành mốc mới, để form không còn bị coi là "đã sửa".
+          form.reset(values);
+        } else {
+          showSuccess(createdMessage);
+          router.replace(`${endpoint}/${saved.id}/edit`);
+        }
+      },
+      onError: (error) => showError(getErrorMessage(error, "Không lưu được")),
+    });
+
+  return { form, onSubmit, saving: save.isPending };
+}
+
+/* ---------- Thanh đầu trang ---------- */
 
 export function FormHeader({
   title,
   backHref,
-  previewHref,
+  previewPath,
   saving,
   saveLabel,
 }: {
   title: string;
   backHref: string;
-  /** Có liên kết này thì hiện nút xem trên website. */
-  previewHref?: string;
+  /** Có thì hiện nút xem trên website, dựng từ đường dẫn đang nhập. */
+  previewPath?: (slug: string) => string;
   saving: boolean;
   saveLabel: string;
 }) {
+  const slug = useWatch({ name: "slug", disabled: !previewPath });
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3">
@@ -45,9 +105,9 @@ export function FormHeader({
       </div>
 
       <div className="flex flex-wrap gap-3">
-        {previewHref ? (
+        {previewPath ? (
           <Link
-            href={previewHref}
+            href={previewPath(slug ?? "")}
             target="_blank"
             className="inline-flex min-h-11 items-center gap-2 rounded-[8px] border border-line px-4 text-[14.5px] font-semibold transition-colors hover:border-ink"
           >
@@ -63,163 +123,50 @@ export function FormHeader({
   );
 }
 
-export function FormTabs<T extends string>({
-  tabs,
-  active,
-  onChange,
-}: {
-  tabs: [T, string][];
-  active: T;
-  onChange: (tab: T) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1 border-b border-line">
-      {tabs.map(([key, label]) => (
-        <button
-          key={key}
-          type="button"
-          onClick={() => onChange(key)}
-          aria-current={active === key ? "true" : undefined}
-          className={clsx(
-            "min-h-11 border-b-2 px-4 text-[14.5px] font-semibold transition-colors",
-            active === key
-              ? "border-ink text-ink"
-              : "border-transparent text-muted hover:text-ink",
-          )}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-export function CoverImagePanel({
-  value,
-  onChange,
-  label = "Ảnh bìa",
-}: {
-  value: string;
-  onChange: (url: string) => void;
-  label?: string;
-}) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-
-  return (
-    <div className="rounded-[12px] border border-line bg-surface p-5">
-      <h2 className="mb-4 text-[15px] font-semibold">{label}</h2>
-
-      {value ? (
-        <>
-          <div className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={value}
-              alt={`${label} đã chọn`}
-              className="aspect-video w-full rounded-[8px] object-cover"
-            />
-            <button
-              type="button"
-              onClick={() => onChange("")}
-              className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-abyss/80 text-white"
-            >
-              <X size={15} aria-hidden="true" />
-              <span className="sr-only">Bỏ {label.toLowerCase()}</span>
-            </button>
-          </div>
-          <AdminButton
-            variant="ghost"
-            className="mt-3 w-full"
-            onClick={() => setPickerOpen(true)}
-          >
-            Đổi ảnh khác
-          </AdminButton>
-        </>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setPickerOpen(true)}
-          className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-[8px] border border-dashed border-silver text-muted transition-colors hover:border-ink hover:text-ink"
-        >
-          <ImagePlus size={20} aria-hidden="true" />
-          <span className="text-[13.5px]">Chọn {label.toLowerCase()}</span>
-        </button>
-      )}
-
-      <MediaPicker
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        onSelect={(media) => {
-          onChange(media.url);
-          setPickerOpen(false);
-        }}
-      />
-    </div>
-  );
-}
+/* ---------- Tab SEO ---------- */
 
 export function SeoTab({
-  idPrefix,
-  title,
-  seoTitle,
-  seoDescription,
-  fallbackDescription,
+  titleField,
+  fallbackField,
   publicPath,
-  error,
-  onChange,
 }: {
-  idPrefix: string;
-  /** Tiêu đề thật của nội dung, dùng cho khung xem trước. */
-  title: string;
-  seoTitle: string;
-  seoDescription: string;
-  fallbackDescription: string;
-  publicPath: string;
-  error?: string;
-  onChange: (field: "seoTitle" | "seoDescription", value: string) => void;
+  /** Trường tiêu đề thật của nội dung, dùng cho khung xem trước. */
+  titleField: string;
+  /** Trường mô tả ngắn, dùng khi chưa điền mô tả SEO. */
+  fallbackField: string;
+  publicPath: (slug: string) => string;
 }) {
+  const [title, fallback, slug, seoTitle, seoDescription] = useWatch({
+    name: [titleField, fallbackField, "slug", "seoTitle", "seoDescription"],
+  }) as string[];
+
   return (
     <div className="flex max-w-[720px] flex-col gap-5">
-      <Field
+      <FormInput
+        name="seoTitle"
         label="Tiêu đề SEO"
-        htmlFor={`${idPrefix}-seo-title`}
-        hint="Để trống thì dùng tiêu đề chính. Nên dưới 60 ký tự để Google không cắt."
-      >
-        <input
-          id={`${idPrefix}-seo-title`}
-          value={seoTitle}
-          onChange={(event) => onChange("seoTitle", event.target.value)}
-          className={inputClass}
-        />
-      </Field>
+        hint={`Để trống thì dùng tiêu đề chính. Tối đa ${F.seoTitle.max} ký tự; Google cắt ở khoảng 60.`}
+      />
 
-      <Field
+      <FormTextarea
+        name="seoDescription"
         label="Mô tả SEO"
-        htmlFor={`${idPrefix}-seo-description`}
-        error={error}
-        hint={`Hiện dưới tiêu đề trên Google và khi chia sẻ Facebook. ${seoDescription.length}/320 ký tự, nên viết khoảng 150.`}
-      >
-        <textarea
-          id={`${idPrefix}-seo-description`}
-          rows={3}
-          value={seoDescription}
-          onChange={(event) => onChange("seoDescription", event.target.value)}
-          aria-invalid={Boolean(error)}
-          className={textareaClass}
-        />
-      </Field>
+        hint={(length) =>
+          `Hiện dưới tiêu đề trên Google và khi chia sẻ Facebook. ${length}/${F.seoDescription.max} ký tự, nên viết khoảng 150.`
+        }
+      />
 
       <div className="rounded-[12px] border border-line bg-surface-alt p-5">
         <p className="mb-3 text-[13px] font-semibold uppercase tracking-[0.05em] text-muted">
           Xem trước trên Google
         </p>
-        <p className="text-[13px] text-muted">nguoiquangbinh.vn{publicPath}</p>
+        <p className="text-[13px] text-muted">nguoiquangbinh.vn{publicPath(slug ?? "")}</p>
         <p className="mt-1 text-[18px] font-medium text-deep">
           {seoTitle || title || "Tiêu đề nội dung"}
         </p>
         <p className="mt-1 max-w-[60ch] text-[14px] leading-relaxed text-muted">
           {seoDescription ||
-            fallbackDescription ||
+            fallback ||
             "Mô tả sẽ hiện ở đây. Chưa điền thì Google tự lấy một đoạn trong nội dung."}
         </p>
       </div>
@@ -227,94 +174,48 @@ export function SeoTab({
   );
 }
 
+/* ---------- Tab xuất bản ---------- */
+
+const ADMIN_STATUS_OPTIONS = [
+  { value: "draft", label: "Bản nháp — chỉ mình thấy" },
+  { value: "published", label: "Xuất bản — hiện trên website" },
+  { value: "scheduled", label: "Lên lịch — tự hiện khi tới giờ" },
+  { value: "archived", label: "Lưu trữ — ẩn khỏi website" },
+];
+
 export function PublishTab({
-  idPrefix,
-  status,
-  publishedAt,
-  isFeatured,
-  featuredLabel,
-  featuredHint,
-  isAdmin,
-  error,
-  onChangeStatus,
-  onChangePublishedAt,
-  onChangeFeatured,
+  featured,
   children,
 }: {
-  idPrefix: string;
-  status: ContentStatus;
-  publishedAt: string;
-  /** Bỏ qua phần nổi bật khi loại nội dung không có cờ này. */
-  isFeatured?: boolean;
-  featuredLabel?: string;
-  featuredHint?: string;
-  isAdmin: boolean;
-  error?: string;
-  onChangeStatus: (status: ContentStatus) => void;
-  onChangePublishedAt: (value: string) => void;
-  onChangeFeatured?: (value: boolean) => void;
+  /** Bỏ qua khi loại nội dung không có cờ nổi bật. */
+  featured?: { label: string; hint: string };
   children?: ReactNode;
 }) {
+  const { isAdmin } = useAuth();
+
   return (
     <div className="flex max-w-[640px] flex-col gap-5">
-      <Field label="Trạng thái" htmlFor={`${idPrefix}-status`}>
-        <select
-          id={`${idPrefix}-status`}
-          value={status}
-          onChange={(event) => onChangeStatus(event.target.value as ContentStatus)}
-          className={inputClass}
-        >
-          <option value="draft">Bản nháp — chỉ mình thấy</option>
-          {isAdmin ? (
-            <>
-              <option value="published">Xuất bản — hiện trên website</option>
-              <option value="scheduled">Lên lịch — tự hiện khi tới giờ</option>
-              <option value="archived">Lưu trữ — ẩn khỏi website</option>
-            </>
-          ) : null}
-        </select>
-      </Field>
+      <FormSelect
+        name="status"
+        label="Trạng thái"
+        options={isAdmin ? ADMIN_STATUS_OPTIONS : ADMIN_STATUS_OPTIONS.slice(0, 1)}
+      />
 
       {!isAdmin ? (
         <p className="rounded-[8px] border border-line bg-surface-alt px-4 py-3 text-[14px] leading-relaxed text-muted">
-          Tài khoản cộng tác viên chỉ lưu được bản nháp. Quản trị viên sẽ duyệt và
-          xuất bản.
+          Tài khoản cộng tác viên chỉ lưu được bản nháp. Quản trị viên sẽ duyệt và xuất bản.
         </p>
       ) : null}
 
-      <Field
+      <FormInput
+        name="publishedAt"
+        type="datetime-local"
         label="Thời điểm xuất bản"
-        htmlFor={`${idPrefix}-published-at`}
-        error={error}
         hint="Để trống thì lấy thời điểm bấm Xuất bản. Đặt ngày giờ tương lai kèm trạng thái Lên lịch thì nội dung tự hiện khi tới giờ."
-      >
-        <input
-          id={`${idPrefix}-published-at`}
-          type="datetime-local"
-          value={publishedAt}
-          onChange={(event) => onChangePublishedAt(event.target.value)}
-          aria-invalid={Boolean(error)}
-          className={inputClass}
-        />
-      </Field>
+      />
 
-      {isAdmin && onChangeFeatured ? (
-        <label className="flex items-start gap-3 rounded-[8px] border border-line bg-surface p-4">
-          <input
-            type="checkbox"
-            checked={Boolean(isFeatured)}
-            onChange={(event) => onChangeFeatured(event.target.checked)}
-            className="mt-0.5 h-4 w-4"
-          />
-          <span>
-            <span className="block text-[14.5px] font-semibold">
-              {featuredLabel ?? "Nổi bật"}
-            </span>
-            <span className="mt-0.5 block text-[13.5px] leading-relaxed text-muted">
-              {featuredHint ?? "Được ưu tiên hiện ở trang chủ."}
-            </span>
-          </span>
-        </label>
+      {isAdmin && featured ? (
+        <FormCheckbox name="isFeatured" label={featured.label} hint={featured.hint} />
       ) : null}
 
       {children}
@@ -322,11 +223,11 @@ export function PublishTab({
   );
 }
 
-/** Chuyển chuỗi ISO sang định dạng mà ô datetime-local hiểu được. */
-export function toLocalInput(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+/** Lời nhắn cho tab cần lưu bản ghi trước mới dùng được (bài học, ảnh album). */
+export function SaveFirstNote({ children }: { children: ReactNode }) {
+  return (
+    <p className="max-w-[60ch] rounded-[8px] border border-line bg-surface-alt px-4 py-3 text-[14px] leading-relaxed text-muted">
+      {children}
+    </p>
+  );
 }

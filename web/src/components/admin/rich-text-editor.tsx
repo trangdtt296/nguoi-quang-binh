@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -17,10 +17,11 @@ import {
   Link2,
   Link2Off,
   ImagePlus,
+  Loader2,
   Undo2,
   Redo2,
 } from "lucide-react";
-import { MediaPicker } from "./media-picker";
+import { useImageUpload } from "./use-image-upload";
 
 /**
  * Trình soạn thảo nội dung.
@@ -36,8 +37,6 @@ export function RichTextEditor({
   value: string;
   onChange: (html: string) => void;
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -84,13 +83,11 @@ export function RichTextEditor({
     editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
   }, [editor]);
 
-  const insertImage = useCallback(
-    (src: string, alt: string) => {
-      editor?.chain().focus().setImage({ src, alt }).run();
-      setPickerOpen(false);
-    },
-    [editor],
-  );
+  // Chọn ảnh từ máy, tải lên xong thì chèn vào chỗ con trỏ đang đứng.
+  const imageUpload = useImageUpload((image, file) => {
+    const alt = file.name.replace(/\.[^.]+$/, "") || "Ảnh minh họa";
+    editor?.chain().focus().setImage({ src: image.url, alt }).run();
+  });
 
   if (!editor) {
     return (
@@ -175,9 +172,10 @@ export function RichTextEditor({
         />
         <ToolButton
           editor={editor}
-          label="Chèn ảnh"
+          label={imageUpload.uploading ? "Đang tải ảnh lên" : "Chèn ảnh từ máy"}
           icon={ImagePlus}
-          onClick={() => setPickerOpen(true)}
+          busy={imageUpload.uploading}
+          onClick={imageUpload.pick}
         />
 
         <Divider />
@@ -199,14 +197,7 @@ export function RichTextEditor({
       </div>
 
       <EditorContent editor={editor} />
-
-      <MediaPicker
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        onSelect={(media) =>
-          insertImage(media.url, media.altText ?? media.fileName ?? "Ảnh minh họa")
-        }
-      />
+      {imageUpload.input}
     </div>
   );
 }
@@ -220,6 +211,7 @@ function ToolButton({
   icon: Icon,
   active,
   disabled,
+  busy,
   onClick,
 }: {
   editor: Editor;
@@ -227,13 +219,16 @@ function ToolButton({
   icon: typeof Bold;
   active?: boolean;
   disabled?: boolean;
+  /** Đang xử lý: hiện vòng quay và khóa nút. */
+  busy?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || busy}
+      aria-busy={busy}
       title={label}
       aria-label={label}
       aria-pressed={active}
@@ -243,7 +238,11 @@ function ToolButton({
         disabled && "cursor-not-allowed opacity-35 hover:bg-transparent",
       )}
     >
-      <Icon size={16} aria-hidden="true" />
+      {busy ? (
+        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+      ) : (
+        <Icon size={16} aria-hidden="true" />
+      )}
     </button>
   );
 }

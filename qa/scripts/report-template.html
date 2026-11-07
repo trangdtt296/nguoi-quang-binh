@@ -1,0 +1,410 @@
+<title>Kiểm thử Người Quảng Bình</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Bố cục: dải tổng kết trên cùng, cột chức năng dính bên trái, sổ case bên phải. */
+  :root {
+    /* Màu nền theo hệ đen · than chì · bạc của website */
+    --paper: #f4f6f7;
+    --sheet: #ffffff;
+    --sheet-alt: #eef1f3;
+    --rule: #dde2e6;
+    --ink: #14181c;
+    --graphite: #5e6a73;
+    /* Màu trạng thái — dịu để hợp tông xám */
+    --passed: #2f7d4f;  --passed-wash: #e2f1e8;
+    --failed: #b8433a;  --failed-wash: #f8e5e2;
+    --blocked: #9a6b1c; --blocked-wash: #f6ecd9;
+    --pending: #5354b8; --pending-wash: #e8e8f8;
+    --notRun: #8b969e;  --notRun-wash: #e9edf0;
+
+    --font-display: "Lora", Georgia, "Times New Roman", serif;
+    --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0e1214; --sheet: #161b1e; --sheet-alt: #1d2327; --rule: #2a3237;
+      --ink: #e6eaed; --graphite: #9aa6ae;
+      --passed: #5fbf86;  --passed-wash: #173023;
+      --failed: #ec7d73;  --failed-wash: #3a1d1a;
+      --blocked: #d9a656; --blocked-wash: #33270f;
+      --pending: #9b9cf2; --pending-wash: #24244a;
+      --notRun: #6e7a82;  --notRun-wash: #20272b;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0e1214; --sheet: #161b1e; --sheet-alt: #1d2327; --rule: #2a3237;
+    --ink: #e6eaed; --graphite: #9aa6ae;
+    --passed: #5fbf86;  --passed-wash: #173023;
+    --failed: #ec7d73;  --failed-wash: #3a1d1a;
+    --blocked: #d9a656; --blocked-wash: #33270f;
+    --pending: #9b9cf2; --pending-wash: #24244a;
+    --notRun: #6e7a82;  --notRun-wash: #20272b;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 14px/1.55 var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1320px;
+    margin-inline: auto;
+    padding-block: 24px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .mono { font-family: var(--font-mono); font-size: 12.5px; }
+  .muted { color: var(--graphite); }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  /* Đầu trang */
+  .masthead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 24px; }
+  h1 { margin: 0; font: 600 26px/1.2 var(--font-display); text-wrap: balance; }
+  .eyebrow { font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--graphite); }
+  .stamp { font-size: 13px; color: var(--graphite); }
+
+  /* Tổng kết */
+  .tally { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 900px) { .tally { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .tile {
+    display: flex; flex-direction: column; gap: 2px; text-align: left;
+    background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 12px 14px; color: inherit; font: inherit; cursor: pointer;
+  }
+  .tile:hover { border-color: var(--graphite); }
+  .tile[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .tile .n { font-size: 26px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tile .l { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--graphite); }
+  .tile .pct { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .swatch { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+  .meter { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--notRun-wash); }
+  .meter span { height: 100%; }
+
+  /* Hai cột */
+  .layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+  nav {
+    position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px);
+    max-height: calc(100vh - 24px); overflow: auto;
+    background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 6px;
+  }
+  @media (max-width: 860px) { nav { position: static; max-height: 360px; } }
+  .group { padding: 12px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--graphite); }
+  .feat {
+    display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left;
+    border: 0; background: none; color: inherit; font: inherit; padding: 8px 10px; border-radius: 7px; cursor: pointer;
+  }
+  .feat:hover { background: var(--sheet-alt); }
+  .feat[aria-current="true"] { background: var(--sheet-alt); }
+  .feat[aria-current="true"] .code { text-decoration: underline; text-underline-offset: 3px; }
+  .feat .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .feat .count { font-size: 12px; color: var(--graphite); font-variant-numeric: tabular-nums; }
+  .feat .name { font-size: 12.5px; color: var(--graphite); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .feat .meter { height: 4px; }
+
+  /* Sổ case */
+  .sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; min-width: 0; }
+  .sheet-head { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px; border-bottom: 1px solid var(--rule); }
+  .sheet-head h2 { margin: 0; font-size: 18px; font-weight: 600; text-wrap: balance; }
+  .routes { display: flex; flex-wrap: wrap; gap: 6px; }
+  .route { padding: 1px 8px; border-radius: 4px; background: var(--sheet-alt); color: var(--graphite); }
+  .callout { padding: 9px 12px; border-radius: 7px; background: var(--sheet-alt); font-size: 13.5px; max-width: 75ch; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--rule); }
+  .filters input, .filters select {
+    min-height: 36px; padding: 6px 10px; font: inherit; color: var(--ink);
+    background: var(--sheet); border: 1px solid var(--rule); border-radius: 7px;
+  }
+  .filters input { flex: 1 1 240px; }
+
+  .case { border-bottom: 1px solid var(--rule); }
+  .case:last-child { border-bottom: 0; }
+  .case summary {
+    display: grid; grid-template-columns: 104px minmax(0, 1fr) 30px 86px; gap: 12px; align-items: center;
+    padding: 11px 20px; cursor: pointer; list-style: none;
+  }
+  .case summary::-webkit-details-marker { display: none; }
+  .case summary:hover, .case[open] summary { background: var(--sheet-alt); }
+  .case .title { min-width: 0; }
+  .case .tags { font-size: 12.5px; color: var(--graphite); }
+  .prio { font-size: 12px; font-weight: 600; color: var(--graphite); font-variant-numeric: tabular-nums; }
+  .prio.P1 { color: var(--ink); }
+  .pill { justify-self: end; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  @media (max-width: 620px) {
+    .case summary { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; }
+    .case .cid { grid-column: 1 / -1; }
+    .prio { display: none; }
+  }
+  .detail { display: grid; gap: 14px; padding: 4px 20px 18px 136px; }
+  @media (max-width: 620px) { .detail { padding-left: 20px; } }
+  .detail h4 { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--graphite); }
+  .detail ol, .detail ul { margin: 0; padding-left: 20px; max-width: 75ch; }
+  .detail li + li { margin-top: 3px; }
+  pre.error {
+    margin: 0; padding: 10px 12px; border-radius: 7px; max-height: 280px; overflow: auto;
+    white-space: pre-wrap; word-break: break-word; background: var(--failed-wash); color: var(--ink);
+  }
+  /* Thiết kế test và độ phủ */
+  .design { border-bottom: 1px solid var(--rule); }
+  .design > summary {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+    padding: 12px 20px; cursor: pointer; list-style: none; font-weight: 600;
+  }
+  .design > summary::-webkit-details-marker { display: none; }
+  .design > summary::before { content: "▸"; color: var(--graphite); }
+  .design[open] > summary::before { content: "▾"; }
+  .design > summary .meter { flex: 1 1 160px; max-width: 260px; }
+  .design-body { display: grid; gap: 16px; padding: 0 20px 18px; }
+  .tech { display: grid; gap: 6px; }
+  .tech h3 { margin: 0; font-size: 13.5px; font-weight: 600; }
+  .tech h3 .mono { color: var(--graphite); font-weight: 400; }
+  .tech .note { font-size: 13px; color: var(--graphite); max-width: 75ch; }
+  .trace-wrap { overflow-x: auto; }
+  table.trace { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .trace th { text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--graphite); padding: 6px 10px; border-bottom: 1px solid var(--rule); }
+  .trace td { padding: 6px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  .trace td:first-child { white-space: nowrap; }
+  .trace .gap { color: var(--failed); font-weight: 600; }
+  .trace .kind { color: var(--graphite); white-space: nowrap; }
+  .tech-tag { display: inline-block; padding: 0 6px; margin-right: 4px; border-radius: 4px; background: var(--sheet-alt); font-size: 11.5px; font-family: var(--font-mono); color: var(--graphite); }
+  .feat .cov { font-size: 11.5px; color: var(--graphite); font-variant-numeric: tabular-nums; }
+
+  .empty { padding: 44px 20px; text-align: center; color: var(--graphite); }
+  .empty code { padding: 2px 6px; border-radius: 4px; background: var(--sheet-alt); color: var(--ink); }
+  a { color: inherit; text-underline-offset: 3px; }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">Bộ test case theo chức năng</div>
+      <h1>Kiểm thử Người Quảng Bình</h1>
+    </div>
+    <div class="stamp" id="stamp"></div>
+  </header>
+
+  <section class="tally" id="tally" aria-label="Tổng kết theo trạng thái"></section>
+
+  <div class="layout">
+    <nav id="nav" aria-label="Chức năng"></nav>
+    <main class="sheet" id="sheet"></main>
+  </div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+const STATUS = { passed: "Pass", failed: "Fail", blocked: "Blocked", pending: "Pending", notRun: "Chưa chạy" };
+const ORDER = ["passed", "failed", "blocked", "pending", "notRun"];
+const TYPE_LABEL = {
+  functional: "Chức năng", validation: "Kiểm tra dữ liệu", negative: "Trường hợp lỗi", ui: "Giao diện",
+  security: "Bảo mật", permission: "Phân quyền", a11y: "Trợ năng", performance: "Hiệu năng", seo: "SEO",
+};
+const AREAS = [["public", "Trang công khai"], ["admin", "Quản trị"]];
+const isLocalFile = location.protocol === "file:";
+
+const state = { feature: "ALL", status: "", priority: "", query: "" };
+
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const when = (iso) => iso ? new Date(iso).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" }) : "—";
+
+function tally(features) {
+  const t = Object.fromEntries(ORDER.map((s) => [s, 0]));
+  for (const f of features) for (const s of ORDER) t[s] += f.counts[s];
+  return t;
+}
+
+function meter(counts) {
+  const all = ORDER.reduce((n, s) => n + counts[s], 0);
+  if (!all) return '<div class="meter"></div>';
+  return '<div class="meter">' + ORDER.filter((s) => counts[s]).map((s) =>
+    `<span style="width:${(counts[s] / all) * 100}%;background:var(--${s})" title="${STATUS[s]}: ${counts[s]}"></span>`).join("") + "</div>";
+}
+
+const coveragePct = (d) => `${d.covered}/${d.total} mục (${Math.round((d.covered / d.total) * 100)}%)`;
+
+function designHtml(f) {
+  const d = f.design;
+  if (!d?.groups?.length) return "";
+  const covered = { passed: d.covered, notRun: d.total - d.covered, failed: 0, blocked: 0, pending: 0 };
+  const groups = d.groups.map((g) => `<section class="tech">
+      <h3>${esc(g.techniqueName)} <span class="mono">${g.technique}</span> · ${esc(g.target)}</h3>
+      ${g.note ? `<div class="note">${esc(g.note)}</div>` : ""}
+      <div class="trace-wrap"><table class="trace">
+        <thead><tr><th>Mục</th><th>Mô tả</th>${g.items.some((i) => i.kind) ? "<th>Loại</th>" : ""}<th>Case phủ</th></tr></thead>
+        <tbody>${g.items.map((i) => `<tr>
+          <td class="mono">${esc(i.id)}</td>
+          <td>${esc(i.desc)}</td>
+          ${g.items.some((x) => x.kind) ? `<td class="kind">${esc(i.kind ?? "")}</td>` : ""}
+          <td class="mono">${i.coveredBy.length ? i.coveredBy.map(esc).join(", ") : '<span class="gap">Chưa phủ</span>'}</td>
+        </tr>`).join("")}</tbody>
+      </table></div>
+    </section>`).join("");
+  return `<details class="design">
+    <summary>Thiết kế test và độ bao phủ <span class="muted">${coveragePct(d)}</span>${meter(covered)}</summary>
+    <div class="design-body">${groups}</div>
+  </details>`;
+}
+
+const pill = (s) => `<span class="pill" style="background:var(--${s}-wash);color:var(--${s})">${STATUS[s]}</span>`;
+const current = () => state.feature === "ALL" ? DATA.features : DATA.features.filter((f) => f.code === state.feature);
+
+function renderTally() {
+  const t = tally(current());
+  const total = ORDER.reduce((n, s) => n + t[s], 0);
+  const pct = (n) => total ? `${Math.round((n / total) * 100)}%` : "";
+  document.getElementById("tally").innerHTML =
+    `<button type="button" class="tile" data-status="" aria-pressed="${state.status === ""}">
+      <span class="n">${total}</span><span class="l">Tổng số case</span></button>` +
+    ORDER.map((s) => `<button type="button" class="tile" data-status="${s}" aria-pressed="${state.status === s}">
+      <span class="n" style="color:var(--${s})">${t[s]}</span>
+      <span class="l"><span class="swatch" style="background:var(--${s})"></span>${STATUS[s]}<span class="pct">${pct(t[s])}</span></span></button>`).join("");
+}
+
+function renderNav() {
+  const totalCases = DATA.features.reduce((n, f) => n + f.total, 0);
+  let html = `<button type="button" class="feat" data-code="ALL" aria-current="${state.feature === "ALL"}">
+    <span class="top"><strong>Tất cả chức năng</strong><span class="count">${totalCases}</span></span>${meter(tally(DATA.features))}</button>`;
+  for (const [area, label] of AREAS) {
+    html += `<div class="group">${label}</div>`;
+    for (const f of DATA.features.filter((x) => x.area === area)) {
+      html += `<button type="button" class="feat" data-code="${f.code}" aria-current="${state.feature === f.code}">
+        <span class="top"><span class="code mono">${f.code}</span><span class="count">${f.hasCases ? f.total : "chưa có"}</span></span>
+        ${f.design?.total ? `<span class="cov">Bao phủ ${coveragePct(f.design)}</span>` : ""}
+        <span class="name" title="${esc(f.name)}">${esc(f.name)}</span>${meter(f.counts)}</button>`;
+    }
+  }
+  document.getElementById("nav").innerHTML = html;
+}
+
+function matches(c) {
+  if (state.status && c.status !== state.status) return false;
+  if (state.priority && c.priority !== state.priority) return false;
+  if (!state.query) return true;
+  const hay = [c.id, c.title, ...(c.covers || []), ...(c.techniques || []), ...(c.steps || []), ...(c.expected || [])].join(" ").toLowerCase();
+  return hay.includes(state.query.toLowerCase());
+}
+
+function list(title, items, ordered) {
+  if (!items?.length) return "";
+  const tag = ordered ? "ol" : "ul";
+  return `<div><h4>${title}</h4><${tag}>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</${tag}></div>`;
+}
+
+function caseRow(c, featureCode) {
+  const r = c.result;
+  let result = "";
+  if (r) {
+    result += `<div><h4>Lần chạy gần nhất</h4><div class="muted">${when(r.runAt)} · ${(r.durationMs / 1000).toFixed(1)} giây</div></div>`;
+    if (r.reason) result += `<div class="callout">${esc(r.reason)}</div>`;
+    if (r.error) result += `<pre class="error mono">${esc(r.error)}</pre>`;
+    if (r.attachments?.length) {
+      result += `<div><h4>Ảnh chụp và trace</h4><ul>${r.attachments.map((a) => isLocalFile
+        ? `<li><a href="../${esc(a)}">${esc(a.split("/").pop())}</a></li>`
+        : `<li><span class="mono">qa/${esc(a)}</span></li>`).join("")}</ul></div>`;
+    }
+  }
+  const data = c.data && Object.keys(c.data).length
+    ? `<div><h4>Dữ liệu test</h4><ul>${Object.entries(c.data).map(([k, v]) =>
+        `<li><span class="mono">${esc(k)}</span>: ${esc(typeof v === "string" ? v : JSON.stringify(v))}</li>`).join("")}</ul></div>` : "";
+  const tags = [TYPE_LABEL[c.type] || c.type, c.automation === "manual" ? "kiểm tra tay" : "", featureCode].filter(Boolean).join(" · ");
+  const techTags = (c.techniques || []).map((t) => `<span class="tech-tag" title="${esc(DATA.techniques?.[t] ?? t)}">${t}</span>`).join("");
+  return `<details class="case">
+    <summary>
+      <span class="cid mono">${c.id}</span>
+      <span class="title">${esc(c.title)}<br><span class="tags">${techTags}${esc(tags)}</span></span>
+      <span class="prio ${c.priority}">${c.priority}</span>
+      ${pill(c.status)}
+    </summary>
+    <div class="detail">
+      ${c.covers?.length ? `<div><h4>Phủ các mục thiết kế</h4><div class="mono">${c.covers.map(esc).join(", ")}</div></div>` : ""}
+      ${list("Điều kiện trước", c.preconditions)}
+      ${list("Các bước", c.steps, true)}
+      ${list("Kết quả mong đợi", c.expected)}
+      ${data}
+      ${c.notes ? `<div class="callout">${esc(c.notes)}</div>` : ""}
+      ${result}
+    </div>
+  </details>`;
+}
+
+function caseRows() {
+  const features = current();
+  const single = state.feature !== "ALL";
+  if (single && !features[0].hasCases) {
+    return `<div class="empty">Chức năng này chưa có test case.<br>Chạy <code>/test-case ${features[0].code}</code> trong Claude Code để tạo.</div>`;
+  }
+  const rows = features.flatMap((f) => f.cases.filter(matches).map((c) => caseRow(c, single ? "" : f.code)));
+  return rows.length ? rows.join("") : `<div class="empty">Không có case nào khớp bộ lọc.</div>`;
+}
+
+function renderSheet() {
+  const features = current();
+  const f = state.feature !== "ALL" ? features[0] : null;
+  const head = f
+    ? `<div class="sheet-head">
+        <span class="eyebrow">${f.area === "admin" ? "Quản trị" : "Trang công khai"} · <span class="mono">${f.code}</span></span>
+        <h2>${esc(f.name)}</h2>
+        <div class="routes">${f.routes.map((r) => `<span class="route mono">${esc(r)}</span>`).join("")}</div>
+        ${f.generatedAt ? `<span class="muted">Bộ case tạo lúc ${when(f.generatedAt)}</span>` : ""}
+        ${f.notes ? `<div class="callout">${esc(f.notes)}</div>` : ""}
+      </div>`
+    : `<div class="sheet-head"><span class="eyebrow">Toàn bộ</span><h2>Tất cả chức năng</h2>
+        <span class="muted">${features.filter((x) => x.hasCases).length}/${features.length} chức năng đã có bộ test case</span></div>`;
+
+  document.getElementById("sheet").innerHTML = `${head}
+    ${f ? designHtml(f) : ""}
+    <div class="filters">
+      <input id="q" type="search" aria-label="Tìm case" placeholder="Tìm theo mã, tên hoặc nội dung bước" value="${esc(state.query)}">
+      <select id="prio" aria-label="Lọc theo độ ưu tiên"><option value="">Mọi độ ưu tiên</option>${["P1", "P2", "P3"].map((p) => `<option ${state.priority === p ? "selected" : ""}>${p}</option>`).join("")}</select>
+      <select id="st" aria-label="Lọc theo trạng thái"><option value="">Mọi trạng thái</option>${ORDER.map((s) => `<option value="${s}" ${state.status === s ? "selected" : ""}>${STATUS[s]}</option>`).join("")}</select>
+    </div>
+    <div id="cases">${caseRows()}</div>`;
+
+  document.getElementById("q").addEventListener("input", (e) => { state.query = e.target.value; refreshCases(); });
+  document.getElementById("prio").addEventListener("change", (e) => { state.priority = e.target.value; refreshCases(); });
+  document.getElementById("st").addEventListener("change", (e) => { state.status = e.target.value; renderTally(); refreshCases(); });
+}
+
+const refreshCases = () => { document.getElementById("cases").innerHTML = caseRows(); };
+const render = () => { renderTally(); renderNav(); renderSheet(); };
+
+document.getElementById("nav").addEventListener("click", (e) => {
+  const btn = e.target.closest(".feat");
+  if (!btn) return;
+  state.feature = btn.dataset.code;
+  try {
+    history.replaceState(null, "", state.feature === "ALL" ? location.pathname + location.search : `#${state.feature}`);
+  } catch {
+    // Một số khung nhúng không cho đổi địa chỉ — bỏ qua, chỉ mất khả năng chia sẻ link tới đúng chức năng.
+  }
+  render();
+});
+document.getElementById("tally").addEventListener("click", (e) => {
+  const btn = e.target.closest(".tile");
+  if (!btn) return;
+  state.status = btn.dataset.status;
+  renderTally();
+  document.getElementById("st").value = state.status;
+  refreshCases();
+});
+
+document.getElementById("stamp").textContent = `Cập nhật ${when(DATA.generatedAt)}`;
+const fromHash = decodeURIComponent(location.hash.slice(1));
+if (DATA.features.some((f) => f.code === fromHash)) state.feature = fromHash;
+render();
+</script>

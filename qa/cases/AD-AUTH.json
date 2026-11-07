@@ -1,0 +1,512 @@
+{
+  "code": "AD-AUTH",
+  "name": "Quản trị — Đăng nhập, đăng xuất, phiên",
+  "generatedAt": "2026-11-05T16:33:58.713Z",
+  "design": [
+    {
+      "technique": "EP",
+      "target": "Ô Email",
+      "note": "Trình duyệt chỉ kiểm tra bỏ trống (login/page.tsx); định dạng, tồn tại do server kiểm tra (server/src/routes/admin/auth.ts). Email được cắt khoảng trắng và đổi về chữ thường.",
+      "items": [
+        { "id": "EP-EMAIL-1", "kind": "Hợp lệ", "desc": "Email đúng của tài khoản đang hoạt động" },
+        { "id": "EP-EMAIL-2", "kind": "Không hợp lệ", "desc": "Để trống" },
+        { "id": "EP-EMAIL-3", "kind": "Không hợp lệ", "desc": "Chỉ toàn khoảng trắng" },
+        { "id": "EP-EMAIL-4", "kind": "Không hợp lệ", "desc": "Sai định dạng (không có @)" },
+        { "id": "EP-EMAIL-5", "kind": "Không hợp lệ", "desc": "Đúng định dạng nhưng chưa đăng ký" },
+        { "id": "EP-EMAIL-6", "kind": "Hợp lệ", "desc": "Email có thật nhưng viết HOA và có khoảng trắng hai đầu" }
+      ]
+    },
+    {
+      "technique": "EP",
+      "target": "Ô Mật khẩu",
+      "note": "Mật khẩu không bị cắt khoảng trắng ở cả web lẫn server.",
+      "items": [
+        { "id": "EP-PW-1", "kind": "Hợp lệ", "desc": "Mật khẩu đúng" },
+        { "id": "EP-PW-2", "kind": "Không hợp lệ", "desc": "Để trống" },
+        { "id": "EP-PW-3", "kind": "Không hợp lệ", "desc": "Mật khẩu sai" },
+        { "id": "EP-PW-4", "kind": "Không hợp lệ", "desc": "Mật khẩu đúng nhưng thêm khoảng trắng ở đầu và cuối" }
+      ]
+    },
+    {
+      "technique": "BVA",
+      "target": "Độ dài ô Email (maxLength 100, theo web/src/lib/field-limits.ts)",
+      "items": [
+        { "id": "BVA-EMAIL-1", "desc": "99 ký tự: giữ nguyên" },
+        { "id": "BVA-EMAIL-2", "desc": "100 ký tự: giữ nguyên" },
+        { "id": "BVA-EMAIL-3", "desc": "101 ký tự: ô tự cắt còn 100" }
+      ]
+    },
+    {
+      "technique": "BVA",
+      "target": "Độ dài ô Mật khẩu (maxLength 20, theo web/src/lib/field-limits.ts)",
+      "items": [
+        { "id": "BVA-PW-1", "desc": "19 ký tự: giữ nguyên" },
+        { "id": "BVA-PW-2", "desc": "20 ký tự: giữ nguyên" },
+        { "id": "BVA-PW-3", "desc": "21 ký tự: ô tự cắt còn 20" }
+      ]
+    },
+    {
+      "technique": "BVA",
+      "target": "Hạn mức đăng nhập sai (5 lần / 15 phút / IP, server/src/middleware/rate-limit.ts)",
+      "items": [
+        { "id": "BVA-RATE-1", "desc": "Lần sai thứ 5: vẫn báo sai email hoặc mật khẩu" },
+        { "id": "BVA-RATE-2", "desc": "Lần thứ 6, kể cả mật khẩu đúng: báo bị khóa 15 phút" }
+      ]
+    },
+    {
+      "technique": "DT",
+      "target": "Kết quả đăng nhập",
+      "note": "Điều kiện: Email tồn tại · Mật khẩu đúng · Tài khoản đang hoạt động. Server kiểm tra 'đang hoạt động' TRƯỚC 'mật khẩu đúng'.",
+      "items": [
+        { "id": "DT-LOGIN-1", "desc": "Y · Y · Y → vào /admin" },
+        { "id": "DT-LOGIN-2", "desc": "Y · N · Y → \"Email hoặc mật khẩu không đúng\"" },
+        { "id": "DT-LOGIN-3", "desc": "N · - · - → \"Email hoặc mật khẩu không đúng\" (giống hệt DT-LOGIN-2)" },
+        { "id": "DT-LOGIN-4", "desc": "Y · Y · N → \"Tài khoản đã bị khóa\"" },
+        { "id": "DT-LOGIN-5", "desc": "Y · N · N → không được tiết lộ tài khoản tồn tại: phải báo như sai mật khẩu" }
+      ]
+    },
+    {
+      "technique": "DT",
+      "target": "Mở khu quản trị theo tình trạng token",
+      "note": "Điều kiện: Có access token hợp lệ · Có refresh token hợp lệ (lib/admin/api-client.ts).",
+      "items": [
+        { "id": "DT-TOKEN-1", "desc": "Y · - → vào thẳng" },
+        { "id": "DT-TOKEN-2", "desc": "N · Y → tự làm mới token rồi vào" },
+        { "id": "DT-TOKEN-3", "desc": "N · N (token sai) → xóa token, về trang đăng nhập" },
+        { "id": "DT-TOKEN-4", "desc": "Không có token nào → về trang đăng nhập" }
+      ]
+    },
+    {
+      "technique": "ST",
+      "target": "Phiên đăng nhập",
+      "note": "Trạng thái: Chưa đăng nhập · Đã đăng nhập · Bị khóa đăng nhập (do sai quá nhiều).",
+      "items": [
+        { "id": "ST-SES-1", "desc": "Chưa đăng nhập —đăng nhập đúng→ Đã đăng nhập" },
+        { "id": "ST-SES-2", "desc": "Chưa đăng nhập —mở trang quản trị→ Chưa đăng nhập (bị chuyển về /admin/login)" },
+        { "id": "ST-SES-3", "desc": "Đã đăng nhập —mở /admin/login→ Đã đăng nhập (chuyển vào /admin)" },
+        { "id": "ST-SES-4", "desc": "Đã đăng nhập —tải lại trang→ Đã đăng nhập" },
+        { "id": "ST-SES-5", "desc": "Đã đăng nhập —đăng xuất→ Chưa đăng nhập" },
+        { "id": "ST-SES-6", "desc": "Đã đăng nhập —tài khoản bị khóa, tải lại→ Chưa đăng nhập" },
+        { "id": "ST-SES-7", "desc": "Chưa đăng nhập —sai 5 lần→ Bị khóa —sau 15 phút→ Chưa đăng nhập" },
+        { "id": "ST-SES-8", "desc": "Chưa đăng nhập (vừa đăng xuất) —bấm Back của trình duyệt→ vẫn Chưa đăng nhập" }
+      ]
+    },
+    {
+      "technique": "UC",
+      "target": "Luồng sử dụng",
+      "items": [
+        { "id": "UC-1", "desc": "Đăng nhập chỉ bằng bàn phím: Tab giữa các ô, Enter để gửi" },
+        { "id": "UC-2", "desc": "Từ trang đăng nhập quay về trang chủ" },
+        { "id": "UC-3", "desc": "Cộng tác viên (editor) đăng nhập và thấy đúng vai trò của mình" }
+      ]
+    },
+    {
+      "technique": "EG",
+      "target": "Đoán lỗi",
+      "items": [
+        { "id": "EG-1", "desc": "Bấm Đăng nhập nhiều lần trong lúc đang chờ" },
+        { "id": "EG-2", "desc": "API không truy cập được" },
+        { "id": "EG-3", "desc": "Chuỗi tấn công trong ô email: <script>, ' OR 1=1 --" },
+        { "id": "EG-4", "desc": "Dùng lại refresh token cũ sau khi đăng xuất" },
+        { "id": "EG-5", "desc": "Đăng xuất ở một tab trong khi tab khác đang mở khu quản trị" }
+      ]
+    },
+    {
+      "technique": "CL",
+      "target": "Checklist giao diện, trợ năng, SEO",
+      "items": [
+        { "id": "CL-1", "desc": "Ô nhập có nhãn, type và autocomplete đúng" },
+        { "id": "CL-2", "desc": "Khu quản trị có meta robots noindex, nofollow" },
+        { "id": "CL-3", "desc": "Lỗi của ô biến mất sau khi sửa và gửi lại" },
+        { "id": "CL-4", "desc": "Ô mật khẩu bị xóa sau khi đăng nhập sai, ô email giữ nguyên" }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "AD-AUTH-001",
+      "title": "Đăng nhập thành công bằng tài khoản hợp lệ",
+      "type": "functional",
+      "priority": "P1",
+      "automation": "auto",
+      "covers": ["EP-EMAIL-1", "EP-PW-1", "DT-LOGIN-1", "ST-SES-1"],
+      "preconditions": ["Có tài khoản super_admin đang hoạt động", "Chưa đăng nhập"],
+      "steps": ["Mở /admin/login", "Nhập email và mật khẩu đúng", "Bấm Đăng nhập"],
+      "expected": [
+        "Chuyển tới /admin",
+        "Header hiện họ tên tài khoản và vai trò \"Quản trị cấp cao\"",
+        "localStorage có nqb.accessToken và nqb.refreshToken"
+      ],
+      "data": { "email": "QA_ADMIN_EMAIL", "password": "QA_ADMIN_PASSWORD" }
+    },
+    {
+      "id": "AD-AUTH-002",
+      "title": "Email không phân biệt hoa thường và bỏ khoảng trắng hai đầu",
+      "type": "functional",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["EP-EMAIL-6"],
+      "preconditions": ["Có tài khoản super_admin đang hoạt động"],
+      "steps": ["Mở /admin/login", "Nhập email viết HOA toàn bộ, thêm khoảng trắng ở đầu và cuối", "Nhập mật khẩu đúng", "Bấm Đăng nhập"],
+      "expected": ["Đăng nhập thành công, chuyển tới /admin"],
+      "data": { "email": "  <QA_ADMIN_EMAIL viết hoa>  " }
+    },
+    {
+      "id": "AD-AUTH-003",
+      "title": "Bỏ trống cả email và mật khẩu",
+      "type": "validation",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["EP-EMAIL-2", "EP-PW-2"],
+      "steps": ["Mở /admin/login", "Không nhập gì, bấm Đăng nhập"],
+      "expected": [
+        "Dưới ô Email hiện \"Vui lòng nhập email\"",
+        "Dưới ô Mật khẩu hiện \"Vui lòng nhập mật khẩu\"",
+        "Không gửi request POST /auth/login",
+        "Vẫn ở /admin/login"
+      ],
+      "notes": "Hai lớp sai thuộc hai ô khác nhau, mỗi ô báo lỗi riêng nên kiểm tra được trong một case. Kiểm tra phía trình duyệt, không tốn hạn mức đăng nhập."
+    },
+    {
+      "id": "AD-AUTH-004",
+      "title": "Email chỉ toàn khoảng trắng bị coi là bỏ trống",
+      "type": "validation",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["EP-EMAIL-3"],
+      "steps": ["Mở /admin/login", "Nhập email là ba dấu cách, nhập mật khẩu bất kỳ", "Bấm Đăng nhập"],
+      "expected": ["Hiện \"Vui lòng nhập email\"", "Không gửi request đăng nhập"]
+    },
+    {
+      "id": "AD-AUTH-005",
+      "title": "Lỗi của ô biến mất khi nhập lại và gửi lại",
+      "type": "ui",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["CL-3"],
+      "steps": ["Bấm Đăng nhập khi bỏ trống để hiện lỗi", "Nhập email và mật khẩu đúng", "Bấm Đăng nhập"],
+      "expected": ["Hai dòng lỗi biến mất", "Đăng nhập thành công"]
+    },
+    {
+      "id": "AD-AUTH-006",
+      "title": "Sai mật khẩu",
+      "type": "negative",
+      "priority": "P1",
+      "automation": "auto",
+      "covers": ["EP-PW-3", "DT-LOGIN-2", "CL-4"],
+      "preconditions": ["Còn hạn mức đăng nhập sai (dưới 5 lần trong 15 phút)"],
+      "steps": ["Nhập email đúng, mật khẩu sai", "Bấm Đăng nhập"],
+      "expected": [
+        "Hiện khung cảnh báo (role=alert) \"Email hoặc mật khẩu không đúng\"",
+        "Ô mật khẩu bị xóa trắng, ô email giữ nguyên",
+        "Vẫn ở /admin/login, không có token trong localStorage"
+      ],
+      "notes": "Tốn 1 lần trong hạn mức 5 lần sai / 15 phút / IP — chỉ chạy khi QA_ALLOW_RATE_LIMITED=1."
+    },
+    {
+      "id": "AD-AUTH-007",
+      "title": "Email không tồn tại báo lỗi giống hệt sai mật khẩu",
+      "type": "security",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["EP-EMAIL-5", "DT-LOGIN-3"],
+      "steps": ["Nhập email chưa đăng ký và mật khẩu bất kỳ", "Bấm Đăng nhập"],
+      "expected": ["Hiện đúng câu \"Email hoặc mật khẩu không đúng\" như case sai mật khẩu, không tiết lộ email có tồn tại hay không"],
+      "data": { "email": "khong-ton-tai-qa@example.com" },
+      "notes": "Tốn 1 lần trong hạn mức đăng nhập sai."
+    },
+    {
+      "id": "AD-AUTH-008",
+      "title": "Email sai định dạng bị server từ chối",
+      "type": "validation",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["EP-EMAIL-4"],
+      "steps": ["Nhập email \"abc\" (không có @) và mật khẩu bất kỳ", "Bấm Đăng nhập"],
+      "expected": ["Hiện khung cảnh báo có chứa \"Email không hợp lệ\"", "Không đăng nhập"],
+      "notes": "Trình duyệt chỉ kiểm tra bỏ trống, định dạng do server kiểm tra. Rate limiter đứng trước bước validate nên lần này cũng tốn 1 lần trong hạn mức."
+    },
+    {
+      "id": "AD-AUTH-009",
+      "title": "Tài khoản bị khóa, mật khẩu đúng: không đăng nhập được",
+      "type": "security",
+      "priority": "P1",
+      "automation": "auto",
+      "covers": ["DT-LOGIN-4"],
+      "preconditions": ["Super_admin tạo qua API một tài khoản editor [QA] có isActive = false"],
+      "steps": ["Đăng nhập bằng tài khoản [QA] vừa tạo với mật khẩu đúng"],
+      "expected": ["Hiện \"Tài khoản đã bị khóa\"", "Không đăng nhập"],
+      "notes": "Tốn 1 lần trong hạn mức đăng nhập sai. Tài khoản [QA] được xóa sau khi chạy."
+    },
+    {
+      "id": "AD-AUTH-010",
+      "title": "Nút Đăng nhập báo đang xử lý và không bấm lặp được",
+      "type": "ui",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["EG-1"],
+      "steps": ["Làm chậm phản hồi của POST /auth/login", "Nhập đúng email, mật khẩu rồi bấm Đăng nhập nhiều lần"],
+      "expected": ["Nút đổi chữ thành \"Đang đăng nhập\" và bị vô hiệu hóa trong lúc chờ", "Chỉ có đúng một request đăng nhập được gửi"]
+    },
+    {
+      "id": "AD-AUTH-011",
+      "title": "Đăng nhập chỉ bằng bàn phím",
+      "type": "a11y",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["UC-1"],
+      "steps": ["Mở /admin/login, nhấn Tab tới ô Email và nhập", "Nhấn Tab sang ô Mật khẩu và nhập", "Nhấn Enter"],
+      "expected": ["Tab đi đúng thứ tự Email → Mật khẩu → nút Đăng nhập", "Enter gửi form, đăng nhập thành công"]
+    },
+    {
+      "id": "AD-AUTH-012",
+      "title": "Ô nhập có nhãn đúng và trình duyệt gợi ý được mật khẩu",
+      "type": "a11y",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["CL-1"],
+      "steps": ["Mở /admin/login", "Tìm ô theo nhãn \"Email\" và \"Mật khẩu\""],
+      "expected": [
+        "Hai ô tìm được bằng nhãn (label gắn đúng ô)",
+        "Ô email có type=email, autocomplete=username, maxlength=100",
+        "Ô mật khẩu có type=password, autocomplete=current-password, maxlength=20"
+      ]
+    },
+    {
+      "id": "AD-AUTH-013",
+      "title": "Chưa đăng nhập mà vào trang quản trị thì bị chuyển về trang đăng nhập",
+      "type": "security",
+      "priority": "P1",
+      "automation": "auto",
+      "covers": ["ST-SES-2", "DT-TOKEN-4"],
+      "preconditions": ["localStorage không có token"],
+      "steps": ["Mở lần lượt /admin, /admin/articles, /admin/users"],
+      "expected": ["Mỗi lần đều bị chuyển về /admin/login", "Không hiện dữ liệu quản trị nào"]
+    },
+    {
+      "id": "AD-AUTH-014",
+      "title": "Đã đăng nhập mà mở trang đăng nhập thì được chuyển vào /admin",
+      "type": "functional",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["ST-SES-3"],
+      "preconditions": ["Đã đăng nhập"],
+      "steps": ["Mở /admin/login"],
+      "expected": ["Tự chuyển tới /admin"]
+    },
+    {
+      "id": "AD-AUTH-015",
+      "title": "Đăng xuất",
+      "type": "functional",
+      "priority": "P1",
+      "automation": "auto",
+      "covers": ["ST-SES-5"],
+      "preconditions": ["Đã đăng nhập, đang ở /admin"],
+      "steps": ["Bấm nút Đăng xuất ở header", "Sau đó mở lại /admin"],
+      "expected": [
+        "Chuyển về /admin/login",
+        "localStorage không còn nqb.accessToken và nqb.refreshToken",
+        "Mở lại /admin bị chuyển về /admin/login"
+      ]
+    },
+    {
+      "id": "AD-AUTH-016",
+      "title": "Giữ phiên sau khi tải lại trang",
+      "type": "functional",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["ST-SES-4", "DT-TOKEN-1"],
+      "preconditions": ["Đã đăng nhập"],
+      "steps": ["Ở /admin, tải lại trang"],
+      "expected": ["Vẫn ở /admin, không bị đẩy ra trang đăng nhập", "Header vẫn hiện tên tài khoản"]
+    },
+    {
+      "id": "AD-AUTH-017",
+      "title": "Access token hết hạn thì tự làm mới bằng refresh token",
+      "type": "functional",
+      "priority": "P1",
+      "automation": "auto",
+      "covers": ["DT-TOKEN-2"],
+      "preconditions": ["Có refresh token hợp lệ"],
+      "steps": ["Đặt nqb.accessToken thành chuỗi không hợp lệ, giữ refresh token đúng", "Mở /admin"],
+      "expected": [
+        "Có request POST /auth/refresh",
+        "Vẫn vào được /admin, không phải đăng nhập lại",
+        "nqb.accessToken được thay bằng token mới"
+      ],
+      "notes": "Mô phỏng token hết hạn bằng token sai — server trả 401 giống nhau trong hai trường hợp."
+    },
+    {
+      "id": "AD-AUTH-018",
+      "title": "Cả hai token đều không hợp lệ thì phải đăng nhập lại",
+      "type": "security",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["DT-TOKEN-3"],
+      "steps": ["Đặt cả nqb.accessToken và nqb.refreshToken thành chuỗi không hợp lệ", "Mở /admin"],
+      "expected": ["Chuyển về /admin/login", "Token sai bị xóa khỏi localStorage"]
+    },
+    {
+      "id": "AD-AUTH-019",
+      "title": "Tài khoản bị khóa khi đang dùng thì bị đẩy ra ở lần tải trang kế tiếp",
+      "type": "security",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["ST-SES-6"],
+      "preconditions": ["Super_admin tạo qua API một tài khoản editor [QA] đang hoạt động"],
+      "steps": ["Đăng nhập trình duyệt bằng tài khoản [QA]", "Super_admin khóa tài khoản đó qua API", "Tải lại /admin"],
+      "expected": ["Không còn ở trong khu quản trị, bị chuyển về /admin/login"],
+      "notes": "Server đọc lại user từ database ở mỗi request nên khóa có hiệu lực ngay, không đợi token hết hạn."
+    },
+    {
+      "id": "AD-AUTH-020",
+      "title": "Header hiện đúng vai trò của tài khoản editor",
+      "type": "permission",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["UC-3"],
+      "preconditions": ["Có tài khoản editor (QA_EDITOR_EMAIL) hoặc super_admin tạo được một tài khoản [QA]"],
+      "steps": ["Đăng nhập bằng tài khoản vai trò editor", "Xem header"],
+      "expected": ["Header hiện vai trò \"Cộng tác viên\""]
+    },
+    {
+      "id": "AD-AUTH-021",
+      "title": "Khu quản trị không cho công cụ tìm kiếm lập chỉ mục",
+      "type": "seo",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["CL-2"],
+      "steps": ["Mở /admin/login, đọc thẻ meta robots"],
+      "expected": ["Có <meta name=\"robots\"> chứa noindex và nofollow"]
+    },
+    {
+      "id": "AD-AUTH-022",
+      "title": "Liên kết \"Quay về trang chủ\"",
+      "type": "functional",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["UC-2"],
+      "steps": ["Ở /admin/login, bấm \"Quay về trang chủ\""],
+      "expected": ["Chuyển tới /"]
+    },
+    {
+      "id": "AD-AUTH-023",
+      "title": "Khóa đăng nhập sau 5 lần sai trong 15 phút",
+      "type": "security",
+      "priority": "P1",
+      "automation": "manual",
+      "covers": ["BVA-RATE-1", "BVA-RATE-2", "ST-SES-7"],
+      "steps": ["Đăng nhập sai mật khẩu 4 lần", "Lần thứ 5 sai mật khẩu", "Lần thứ 6 nhập mật khẩu đúng", "Đợi 15 phút rồi đăng nhập đúng"],
+      "expected": [
+        "Lần thứ 5 vẫn báo \"Email hoặc mật khẩu không đúng\"",
+        "Lần thứ 6 báo \"Sai quá nhiều lần. Vui lòng thử lại sau 15 phút.\" dù mật khẩu đúng",
+        "Sau 15 phút đăng nhập được"
+      ],
+      "notes": "Kiểm tra tay trên môi trường riêng: sau khi bị khóa, mọi lần đăng nhập từ IP đó (cả đúng) bị chặn 15 phút, làm BLOCKED toàn bộ case quản trị khác."
+    },
+    {
+      "id": "AD-AUTH-024",
+      "title": "Mất kết nối tới API khi đăng nhập",
+      "type": "negative",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["EG-2"],
+      "steps": ["Chặn request tới API (giả lập server tắt)", "Nhập đúng email, mật khẩu, bấm Đăng nhập"],
+      "expected": ["Hiện khung cảnh báo bắt đầu bằng \"Không gọi được API tại\" kèm địa chỉ API", "Nút Đăng nhập dùng lại được"]
+    },
+    {
+      "id": "AD-AUTH-025",
+      "title": "Refresh token cũ không dùng được sau khi đăng xuất",
+      "type": "security",
+      "priority": "P3",
+      "automation": "manual",
+      "covers": ["EG-4"],
+      "steps": ["Đăng nhập, sao chép nqb.refreshToken", "Đăng xuất", "Gọi POST /auth/refresh bằng token đã sao chép"],
+      "expected": ["Server từ chối token (401)"],
+      "notes": "Rủi ro đã biết: hiện server không thu hồi token khi đăng xuất (comment ở server/src/routes/admin/auth.ts), nên case này sẽ fail cho tới khi có bảng lưu refresh token. Để manual để không báo fail lặp lại mỗi lần chạy."
+    },
+    {
+      "id": "AD-AUTH-026",
+      "title": "Tài khoản bị khóa, mật khẩu sai: không được tiết lộ tài khoản tồn tại",
+      "type": "security",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["DT-LOGIN-5"],
+      "preconditions": ["Super_admin tạo qua API một tài khoản editor [QA] có isActive = false"],
+      "steps": ["Đăng nhập bằng email của tài khoản [QA] đó với mật khẩu SAI"],
+      "expected": ["Hiện \"Email hoặc mật khẩu không đúng\", giống hệt khi email không tồn tại"],
+      "notes": "Nghi lỗi: server kiểm tra isActive trước khi so mật khẩu nên hiện tại sẽ trả \"Tài khoản đã bị khóa\" — ai không biết mật khẩu cũng dò được email nào có tài khoản (đã bị khóa). Tốn 1 lần trong hạn mức đăng nhập sai."
+    },
+    {
+      "id": "AD-AUTH-027",
+      "title": "Mật khẩu không bị cắt khoảng trắng",
+      "type": "validation",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["EP-PW-4"],
+      "steps": ["Nhập email đúng", "Nhập mật khẩu đúng nhưng thêm một dấu cách ở đầu và cuối", "Bấm Đăng nhập"],
+      "expected": ["Báo \"Email hoặc mật khẩu không đúng\" — khoảng trắng là một phần của mật khẩu"],
+      "notes": "Tốn 1 lần trong hạn mức đăng nhập sai."
+    },
+    {
+      "id": "AD-AUTH-028",
+      "title": "Giá trị biên độ dài ô Email (99 / 100 / 101 ký tự)",
+      "type": "validation",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["BVA-EMAIL-1", "BVA-EMAIL-2", "BVA-EMAIL-3"],
+      "steps": ["Gõ lần lượt chuỗi 99, 100, 101 ký tự vào ô Email (không bấm Đăng nhập)"],
+      "expected": ["Với 99 và 100 ký tự, ô giữ đủ số ký tự đã gõ", "Với 101 ký tự, ô chỉ nhận 100 ký tự đầu"],
+      "data": { "value": "\"a\" lặp lại tới độ dài cần thử, kết thúc bằng \"@qa.vn\"" },
+      "notes": "Chỉ kiểm tra trên trình duyệt, không gửi request nên không tốn hạn mức."
+    },
+    {
+      "id": "AD-AUTH-029",
+      "title": "Giá trị biên độ dài ô Mật khẩu (19 / 20 / 21 ký tự)",
+      "type": "validation",
+      "priority": "P3",
+      "automation": "auto",
+      "covers": ["BVA-PW-1", "BVA-PW-2", "BVA-PW-3"],
+      "steps": ["Gõ lần lượt chuỗi 19, 20, 21 ký tự vào ô Mật khẩu (không bấm Đăng nhập)"],
+      "expected": ["Với 19 và 20 ký tự, ô giữ đủ", "Với 21 ký tự, ô chỉ nhận 20 ký tự"],
+      "notes": "Chỉ kiểm tra trên trình duyệt, không tốn hạn mức."
+    },
+    {
+      "id": "AD-AUTH-030",
+      "title": "Chuỗi tấn công trong ô Email không gây lỗi và không chạy script",
+      "type": "security",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["EG-3"],
+      "steps": ["Nhập email là <script>alert(1)</script>, mật khẩu bất kỳ, bấm Đăng nhập", "Lặp lại với ' OR 1=1 --"],
+      "expected": [
+        "Cả hai lần hiện cảnh báo có \"Email không hợp lệ\", không có lỗi 500",
+        "Không có hộp thoại alert nào bật lên, chuỗi hiện đúng nguyên văn trong ô"
+      ],
+      "notes": "Tốn 2 lần trong hạn mức đăng nhập sai."
+    },
+    {
+      "id": "AD-AUTH-031",
+      "title": "Bấm Back sau khi đăng xuất không quay lại được khu quản trị",
+      "type": "security",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["ST-SES-8"],
+      "preconditions": ["Đã đăng nhập, đã mở /admin rồi /admin/articles"],
+      "steps": ["Bấm Đăng xuất", "Bấm nút Back của trình duyệt"],
+      "expected": ["Không hiện nội dung quản trị, bị chuyển về /admin/login"]
+    },
+    {
+      "id": "AD-AUTH-032",
+      "title": "Đăng xuất ở tab này thì tab khác cũng phải ra khỏi khu quản trị",
+      "type": "security",
+      "priority": "P2",
+      "automation": "auto",
+      "covers": ["EG-5"],
+      "preconditions": ["Đã đăng nhập, mở /admin ở tab A và /admin/articles ở tab B"],
+      "steps": ["Ở tab A bấm Đăng xuất", "Ở tab B bấm sang trang khác trong menu (ví dụ Điểm đến)"],
+      "expected": ["Tab B chuyển về /admin/login thay vì ở lại khu quản trị và báo lỗi tải dữ liệu"],
+      "notes": "Nghi lỗi: token bị xóa khỏi localStorage nhưng tab B vẫn giữ thông tin người dùng trong bộ nhớ, nên có thể chỉ hiện lỗi API thay vì chuyển về trang đăng nhập."
+    }
+  ]
+}

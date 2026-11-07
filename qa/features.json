@@ -1,0 +1,225 @@
+{
+  "$comment": "Danh mục chức năng để kiểm thử. Mỗi chức năng có một mã; test case lưu ở qa/cases/<mã>.json, spec tự động ở qa/e2e/<mã>.spec.ts. Thêm chức năng mới thì thêm một mục ở đây.",
+  "features": [
+    {
+      "code": "HOME",
+      "name": "Trang chủ",
+      "area": "public",
+      "routes": ["/"],
+      "sources": ["web/src/app/(public)/page.tsx", "web/src/components/home/", "web/src/components/layout/", "web/src/lib/nav.ts"],
+      "api": ["GET /banners", "GET /settings", "GET /destinations", "GET /articles", "GET /foods", "GET /events", "GET /courses"]
+    },
+    {
+      "code": "DEST",
+      "name": "Điểm đến (danh sách, lọc, chi tiết)",
+      "area": "public",
+      "routes": ["/diem-den", "/diem-den/[slug]"],
+      "sources": ["web/src/app/(public)/diem-den/", "web/src/components/content/", "web/src/lib/filters.ts", "server/src/routes/public/destinations.ts"],
+      "api": ["GET /destinations", "GET /destinations/:slug", "POST /views/:type/:id"]
+    },
+    {
+      "code": "FOOD",
+      "name": "Ẩm thực",
+      "area": "public",
+      "routes": ["/am-thuc", "/am-thuc/[slug]"],
+      "sources": ["web/src/app/(public)/am-thuc/", "web/src/components/content/", "server/src/routes/public/misc.ts"],
+      "api": ["GET /foods", "GET /foods/:slug"]
+    },
+    {
+      "code": "CULT",
+      "name": "Văn hóa",
+      "area": "public",
+      "routes": ["/van-hoa", "/van-hoa/[slug]"],
+      "sources": ["web/src/app/(public)/van-hoa/", "web/src/components/content/", "server/src/routes/public/articles.ts"],
+      "api": ["GET /articles?type=culture", "GET /articles/:slug"]
+    },
+    {
+      "code": "NEWS",
+      "name": "Tin tức",
+      "area": "public",
+      "routes": ["/tin-tuc", "/tin-tuc/[slug]"],
+      "sources": ["web/src/app/(public)/tin-tuc/", "web/src/components/content/", "server/src/routes/public/articles.ts"],
+      "api": ["GET /articles?type=news", "GET /articles/:slug"]
+    },
+    {
+      "code": "GUIDE",
+      "name": "Cẩm nang",
+      "area": "public",
+      "routes": ["/cam-nang", "/cam-nang/[slug]"],
+      "sources": ["web/src/app/(public)/cam-nang/", "web/src/components/content/", "server/src/routes/public/articles.ts"],
+      "api": ["GET /articles?type=guide", "GET /articles/:slug"]
+    },
+    {
+      "code": "EVT",
+      "name": "Sự kiện",
+      "area": "public",
+      "routes": ["/su-kien", "/su-kien/[slug]"],
+      "sources": ["web/src/app/(public)/su-kien/", "web/src/components/content/", "server/src/routes/public/misc.ts"],
+      "api": ["GET /events", "GET /events/:slug"]
+    },
+    {
+      "code": "LEARN",
+      "name": "Góc học tập (khóa học, bài học)",
+      "area": "public",
+      "routes": ["/goc-hoc-tap", "/goc-hoc-tap/[courseSlug]", "/goc-hoc-tap/[courseSlug]/[lessonSlug]"],
+      "sources": ["web/src/app/(public)/goc-hoc-tap/", "server/src/routes/public/courses.ts"],
+      "api": ["GET /courses", "GET /courses/:courseSlug", "GET /courses/:courseSlug/:lessonSlug"]
+    },
+    {
+      "code": "GAL",
+      "name": "Thư viện ảnh",
+      "area": "public",
+      "routes": ["/thu-vien", "/thu-vien/[slug]"],
+      "sources": ["web/src/app/(public)/thu-vien/", "web/src/components/shared/gallery-grid.tsx", "server/src/routes/public/misc.ts"],
+      "api": ["GET /albums", "GET /albums/:slug"]
+    },
+    {
+      "code": "SRCH",
+      "name": "Tìm kiếm",
+      "area": "public",
+      "routes": ["/tim-kiem"],
+      "sources": ["web/src/app/(public)/tim-kiem/", "server/src/routes/public/misc.ts"],
+      "api": ["GET /search"]
+    },
+    {
+      "code": "CONT",
+      "name": "Liên hệ (form gửi tin nhắn)",
+      "area": "public",
+      "routes": ["/lien-he"],
+      "sources": ["web/src/app/(public)/lien-he/", "web/src/components/shared/contact-form.tsx", "server/src/routes/public/misc.ts"],
+      "api": ["POST /contact"],
+      "notes": "Server giới hạn 5 tin/giờ/IP — case gửi thành công phải tính vào hạn mức này."
+    },
+    {
+      "code": "SEO",
+      "name": "SEO và trang hệ thống (giới thiệu, 404, sitemap, robots, chia sẻ)",
+      "area": "public",
+      "routes": ["/gioi-thieu", "/sitemap.xml", "/robots.txt", "/khong-ton-tai"],
+      "sources": ["web/src/app/(public)/gioi-thieu/", "web/src/app/not-found.tsx", "web/src/app/sitemap.ts", "web/src/app/robots.ts", "web/src/app/layout.tsx", "web/src/components/shared/share-buttons.tsx"],
+      "api": []
+    },
+    {
+      "code": "AD-AUTH",
+      "name": "Quản trị — Đăng nhập, đăng xuất, phiên",
+      "area": "admin",
+      "routes": ["/admin/login", "/admin"],
+      "sources": ["web/src/app/admin/login/", "web/src/app/admin/layout.tsx", "web/src/app/admin/(protected)/layout.tsx", "web/src/components/admin/shell.tsx", "web/src/lib/admin/auth-context.tsx", "web/src/lib/admin/api-client.ts", "server/src/routes/admin/auth.ts", "server/src/middleware/auth.ts", "server/src/middleware/rate-limit.ts"],
+      "api": ["POST /auth/login", "POST /auth/refresh", "GET /auth/me"],
+      "notes": "Server khóa đăng nhập sau 5 lần sai / 15 phút / IP. Case đăng nhập sai phải đếm số lần thử."
+    },
+    {
+      "code": "AD-DASH",
+      "name": "Quản trị — Bảng điều khiển",
+      "area": "admin",
+      "routes": ["/admin"],
+      "sources": ["web/src/app/admin/(protected)/page.tsx", "web/src/components/admin/sidebar.tsx", "server/src/routes/admin/index.ts"],
+      "api": ["GET /admin/dashboard/stats"]
+    },
+    {
+      "code": "AD-ART",
+      "name": "Quản trị — Bài viết",
+      "area": "admin",
+      "routes": ["/admin/articles", "/admin/articles/new", "/admin/articles/[id]/edit"],
+      "sources": ["web/src/app/admin/(protected)/articles/", "web/src/components/admin/article-form.tsx", "web/src/components/admin/form-fields.tsx", "web/src/components/admin/form-parts.tsx", "web/src/components/admin/resource-list.tsx", "web/src/components/admin/rich-text-editor.tsx", "server/src/routes/admin/crud.ts", "server/src/routes/admin/schemas.ts"],
+      "api": ["GET/POST /admin/articles", "GET/PATCH/DELETE /admin/articles/:id"]
+    },
+    {
+      "code": "AD-DEST",
+      "name": "Quản trị — Điểm đến",
+      "area": "admin",
+      "routes": ["/admin/destinations", "/admin/destinations/new", "/admin/destinations/[id]/edit"],
+      "sources": ["web/src/app/admin/(protected)/destinations/", "web/src/components/admin/destination-form.tsx", "web/src/components/admin/form-fields.tsx", "web/src/components/admin/resource-list.tsx", "server/src/routes/admin/crud.ts", "server/src/routes/admin/schemas.ts"],
+      "api": ["GET/POST /admin/destinations", "GET/PATCH/DELETE /admin/destinations/:id"]
+    },
+    {
+      "code": "AD-FOOD",
+      "name": "Quản trị — Ẩm thực",
+      "area": "admin",
+      "routes": ["/admin/foods", "/admin/foods/new", "/admin/foods/[id]/edit"],
+      "sources": ["web/src/app/admin/(protected)/foods/", "web/src/components/admin/food-form.tsx", "web/src/components/admin/form-fields.tsx", "web/src/components/admin/resource-list.tsx", "server/src/routes/admin/crud.ts", "server/src/routes/admin/schemas.ts"],
+      "api": ["GET/POST /admin/foods", "GET/PATCH/DELETE /admin/foods/:id"]
+    },
+    {
+      "code": "AD-EVT",
+      "name": "Quản trị — Sự kiện",
+      "area": "admin",
+      "routes": ["/admin/events", "/admin/events/new", "/admin/events/[id]/edit"],
+      "sources": ["web/src/app/admin/(protected)/events/", "web/src/components/admin/event-form.tsx", "web/src/components/admin/form-fields.tsx", "server/src/routes/admin/crud.ts", "server/src/routes/admin/schemas.ts"],
+      "api": ["GET/POST /admin/events", "GET/PATCH/DELETE /admin/events/:id"]
+    },
+    {
+      "code": "AD-CRS",
+      "name": "Quản trị — Khóa học và bài học",
+      "area": "admin",
+      "routes": ["/admin/courses", "/admin/courses/new", "/admin/courses/[id]/edit"],
+      "sources": ["web/src/app/admin/(protected)/courses/", "web/src/components/admin/course-form.tsx", "web/src/components/admin/course-lessons.tsx", "server/src/routes/admin/index.ts", "server/src/routes/admin/schemas.ts"],
+      "api": ["GET/POST /admin/courses", "GET /admin/courses/:id/lessons", "PATCH /admin/courses/:id/reorder", "POST/PATCH/DELETE /admin/articles (type=lesson)"]
+    },
+    {
+      "code": "AD-ALB",
+      "name": "Quản trị — Album ảnh",
+      "area": "admin",
+      "routes": ["/admin/albums", "/admin/albums/new", "/admin/albums/[id]/edit"],
+      "sources": ["web/src/app/admin/(protected)/albums/", "web/src/components/admin/album-form.tsx", "web/src/components/admin/album-photos.tsx", "web/src/components/admin/media-picker.tsx", "server/src/routes/admin/index.ts"],
+      "api": ["GET/POST /admin/albums", "GET/PATCH /admin/albums/:id/items"]
+    },
+    {
+      "code": "AD-BAN",
+      "name": "Quản trị — Banner",
+      "area": "admin",
+      "routes": ["/admin/banners", "/admin/banners/new", "/admin/banners/[id]/edit"],
+      "sources": ["web/src/app/admin/(protected)/banners/", "web/src/components/admin/banner-form.tsx", "server/src/routes/admin/index.ts", "server/src/routes/admin/schemas.ts"],
+      "api": ["GET/POST /admin/banners", "GET/PATCH/DELETE /admin/banners/:id"]
+    },
+    {
+      "code": "AD-CAT",
+      "name": "Quản trị — Danh mục",
+      "area": "admin",
+      "routes": ["/admin/categories"],
+      "sources": ["web/src/app/admin/(protected)/categories/", "server/src/routes/admin/index.ts", "server/src/routes/admin/schemas.ts"],
+      "api": ["GET/POST /admin/categories", "PATCH/DELETE /admin/categories/:id"]
+    },
+    {
+      "code": "AD-MED",
+      "name": "Quản trị — Thư viện media và tải ảnh",
+      "area": "admin",
+      "routes": ["/admin/media"],
+      "sources": ["web/src/app/admin/(protected)/media/", "web/src/components/admin/use-image-upload.tsx", "web/src/components/admin/cover-image-panel.tsx", "web/src/components/admin/media-picker.tsx", "server/src/routes/admin/media.ts"],
+      "api": ["GET /admin/media", "POST /admin/media/upload", "DELETE /admin/media/:id"],
+      "notes": "Upload cần Cloudinary đã cấu hình ở server; thiếu thì case upload là blocked."
+    },
+    {
+      "code": "AD-MSG",
+      "name": "Quản trị — Tin nhắn liên hệ",
+      "area": "admin",
+      "routes": ["/admin/messages"],
+      "sources": ["web/src/app/admin/(protected)/messages/", "server/src/routes/admin/index.ts"],
+      "api": ["GET /admin/contact-messages", "PATCH /admin/contact-messages/:id"]
+    },
+    {
+      "code": "AD-TRASH",
+      "name": "Quản trị — Thùng rác và khôi phục",
+      "area": "admin",
+      "routes": ["/admin/trash"],
+      "sources": ["web/src/app/admin/(protected)/trash/", "server/src/routes/admin/crud.ts"],
+      "api": ["GET /admin/:resource?trash=true", "POST /admin/:resource/:id/restore"]
+    },
+    {
+      "code": "AD-SET",
+      "name": "Quản trị — Cài đặt website",
+      "area": "admin",
+      "routes": ["/admin/settings"],
+      "sources": ["web/src/app/admin/(protected)/settings/", "server/src/routes/admin/index.ts"],
+      "api": ["GET/PATCH /admin/settings", "GET /settings"]
+    },
+    {
+      "code": "AD-USR",
+      "name": "Quản trị — Tài khoản và phân quyền",
+      "area": "admin",
+      "routes": ["/admin/users"],
+      "sources": ["web/src/app/admin/(protected)/users/", "web/src/components/admin/sidebar.tsx", "server/src/routes/admin/index.ts", "server/src/middleware/rbac.ts"],
+      "api": ["GET/POST /admin/users", "PATCH/DELETE /admin/users/:id"],
+      "notes": "Gồm cả kiểm tra quyền của 3 vai trò editor / admin / super_admin trên các màn hình khác."
+    }
+  ]
+}

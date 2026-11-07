@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro, Lora } from "next/font/google";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 const beVietnam = Be_Vietnam_Pro({
@@ -40,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Layout gốc: chỉ lo khung HTML và font.
+ * Layout gốc: khung HTML, font và provider dùng chung (react-query).
  *
  * Header và Footer nằm ở (public)/layout.tsx, vì khu quản trị có khung
  * riêng và không dùng chúng.
@@ -50,7 +51,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="vi" className={`${beVietnam.variable} ${lora.variable}`}>
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

@@ -1,15 +1,8 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchCurrentUser,
   login as apiLogin,
@@ -30,48 +23,47 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+const CURRENT_USER_KEY = ["auth", "me"] as const;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [user, setUser] = useState<AdminUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   // Lúc mới tải trang, hỏi lại server xem token còn hiệu lực không — thay vì
   // tin vào token đã lưu, vì tài khoản có thể đã bị khóa trong lúc đó.
-  useEffect(() => {
-    let active = true;
-    fetchCurrentUser()
-      .then((found) => {
-        if (active) setUser(found);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { data: user = null, isPending } = useQuery({
+    queryKey: CURRENT_USER_KEY,
+    queryFn: fetchCurrentUser,
+    staleTime: Infinity,
+    retry: false,
+  });
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const signedIn = await apiLogin(email, password);
-    setUser(signedIn);
-  }, []);
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const signedIn = await apiLogin(email, password);
+      queryClient.setQueryData(CURRENT_USER_KEY, signedIn);
+    },
+    [queryClient],
+  );
 
   const signOut = useCallback(() => {
     apiLogout();
-    setUser(null);
+    // Xóa sạch cache để người đăng nhập sau không thấy dữ liệu của người trước.
+    queryClient.clear();
+    queryClient.setQueryData(CURRENT_USER_KEY, null);
     router.push("/admin/login");
-  }, [router]);
+  }, [queryClient, router]);
 
   const value = useMemo<AuthState>(
     () => ({
       user,
-      loading,
+      loading: isPending,
       signIn,
       signOut,
       isAdmin: user?.role === "admin" || user?.role === "super_admin",
       isSuperAdmin: user?.role === "super_admin",
     }),
-    [user, loading, signIn, signOut],
+    [user, isPending, signIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

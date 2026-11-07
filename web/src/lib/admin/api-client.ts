@@ -11,7 +11,16 @@
  * Bù lại, nội dung hiển thị đều do quản trị viên soạn nên bề mặt XSS hẹp.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/v1";
+import {
+  API_URL,
+  ApiError,
+  networkError,
+  parseResponse,
+  type ApiResponse,
+  type PageMeta,
+} from "@/lib/http";
+
+export { ApiError, type PageMeta };
 
 const ACCESS_KEY = "nqb.accessToken";
 const REFRESH_KEY = "nqb.refreshToken";
@@ -24,44 +33,23 @@ export interface AdminUser {
   avatarUrl?: string | null;
 }
 
-export interface PageMeta {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
+/* ---------- Token ---------- */
 
-/** Lỗi có mã, để phần gọi phân biệt được hết phiên với lỗi dữ liệu. */
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    message: string,
-    public details?: { field: string; message: string }[],
-  ) {
-    super(message);
-    this.name = "ApiError";
+function readStorage(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
   }
 }
 
-/* ---------- Token ---------- */
-
 export const tokenStore = {
   get access() {
-    if (typeof window === "undefined") return null;
-    try {
-      return window.localStorage.getItem(ACCESS_KEY);
-    } catch {
-      return null;
-    }
+    return readStorage(ACCESS_KEY);
   },
   get refresh() {
-    if (typeof window === "undefined") return null;
-    try {
-      return window.localStorage.getItem(REFRESH_KEY);
-    } catch {
-      return null;
-    }
+    return readStorage(REFRESH_KEY);
   },
   save(access: string, refresh: string) {
     try {
@@ -92,10 +80,8 @@ export const tokenStore = {
  */
 let refreshing: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
-  if (refreshing) return refreshing;
-
-  refreshing = (async () => {
+function refreshAccessToken(): Promise<string | null> {
+  refreshing ??= (async () => {
     const refreshToken = tokenStore.refresh;
     if (!refreshToken) return null;
 
@@ -111,10 +97,11 @@ async function refreshAccessToken(): Promise<string | null> {
         return null;
       }
 
-      const payload = await response.json();
-      const { accessToken, refreshToken: nextRefresh } = payload.data;
-      tokenStore.save(accessToken, nextRefresh);
-      return accessToken as string;
+      const { data } = await parseResponse<{ accessToken: string; refreshToken: string }>(
+        response,
+      );
+      tokenStore.save(data.accessToken, data.refreshToken);
+      return data.accessToken;
     } catch {
       return null;
     } finally {
@@ -127,21 +114,23 @@ async function refreshAccessToken(): Promise<string | null> {
 
 /* ---------- Gọi API ---------- */
 
+type Method = "GET" | "POST" | "PATCH" | "DELETE";
+
 interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: Method;
+  /** Đối tượng thường được gửi dạng JSON; FormData thì gửi nguyên. */
   body?: unknown;
-  /** Dùng nội bộ: đánh dấu đây là lần thử lại sau khi làm mới token. */
-  retried?: boolean;
+  fallbackMessage?: string;
 }
 
 async function request<T>(
   path: string,
-  options: RequestOptions = {},
-): Promise<{ data: T; meta?: PageMeta }> {
-  const { method = "GET", body, retried = false } = options;
-
+  { method = "GET", body, fallbackMessage }: RequestOptions = {},
+  retried = false,
+): Promise<ApiResponse<T>> {
+  const isForm = body instanceof FormData;
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
 
   const accessToken = tokenStore.access;
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
@@ -151,88 +140,48 @@ async function request<T>(
     response = await fetch(`${API_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch {
-    /*
-      fetch ném cùng một lỗi cho nhiều nguyên nhân khác nhau — server không
-      chạy, sai địa chỉ, hoặc bị chặn vì khác origin — nên không đoán được
-      chính xác. Nêu cả ba khả năng kèm địa chỉ đang gọi để người dùng tự
-      đối chiếu, thay vì chỉ nói "không kết nối được".
-    */
-    throw new ApiError(
-      0,
-      "NETWORK_ERROR",
-      `Không gọi được API tại ${API_URL}. Kiểm tra: backend đã chạy chưa, ` +
-        `địa chỉ trong NEXT_PUBLIC_API_URL có đúng không, và mở Console của ` +
-        `trình duyệt xem có bị chặn vì khác origin (CORS) không.`,
-    );
+    throw networkError();
   }
 
   // Token hết hạn: làm mới rồi thử lại đúng một lần.
   if (response.status === 401 && !retried && tokenStore.refresh) {
     const fresh = await refreshAccessToken();
-    if (fresh) return request<T>(path, { ...options, retried: true });
+    if (fresh) return request<T>(path, { method, body, fallbackMessage }, true);
   }
 
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok || payload?.success === false) {
-    throw new ApiError(
-      response.status,
-      payload?.error?.code ?? "UNKNOWN",
-      payload?.error?.message ?? "Có lỗi xảy ra, vui lòng thử lại",
-      payload?.error?.details,
-    );
-  }
-
-  return { data: payload.data as T, meta: payload.meta as PageMeta | undefined };
+  return parseResponse<T>(response, fallbackMessage);
 }
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body }),
-  patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "PATCH", body }),
+  patch: <T>(path: string, body?: unknown) => request<T>(path, { method: "PATCH", body }),
   del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 
-  /** Upload ảnh: dùng FormData nên không đi qua `request`. */
   async upload(file: File, altText?: string) {
     const form = new FormData();
     form.append("file", file);
     if (altText) form.append("altText", altText);
 
-    const headers: Record<string, string> = {};
-    const accessToken = tokenStore.access;
-    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-
-    const response = await fetch(`${API_URL}/admin/media/upload`, {
-      method: "POST",
-      headers,
-      body: form,
-    });
-
-    const payload = await response.json().catch(() => null);
-    if (!response.ok || payload?.success === false) {
-      throw new ApiError(
-        response.status,
-        payload?.error?.code ?? "UPLOAD_FAILED",
-        payload?.error?.message ?? "Tải ảnh lên thất bại",
-      );
-    }
-
-    return payload.data as { id: string; url: string; thumbnailUrl?: string };
+    const { data } = await request<{ id: string; url: string; thumbnailUrl?: string }>(
+      "/admin/media/upload",
+      { method: "POST", body: form, fallbackMessage: "Tải ảnh lên thất bại" },
+    );
+    return data;
   },
 };
 
 /* ---------- Đăng nhập ---------- */
 
 export async function login(email: string, password: string): Promise<AdminUser> {
-  const { data } = await request<{
+  const { data } = await api.post<{
     accessToken: string;
     refreshToken: string;
     user: AdminUser;
-  }>("/auth/login", { method: "POST", body: { email, password } });
+  }>("/auth/login", { email, password });
 
   tokenStore.save(data.accessToken, data.refreshToken);
   return data.user;

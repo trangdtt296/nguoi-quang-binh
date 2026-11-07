@@ -7,12 +7,7 @@ import { ExternalLink, LogOut, Menu, X } from "lucide-react";
 import { AdminSidebar } from "./sidebar";
 import { AdminLoading } from "./ui";
 import { useAuth } from "@/lib/admin/auth-context";
-
-const roleLabels: Record<string, string> = {
-  editor: "Cộng tác viên",
-  admin: "Quản trị viên",
-  super_admin: "Quản trị cấp cao",
-};
+import { USER_ROLE_LABELS } from "@/lib/admin/types";
 
 /**
  * Khung của khu quản trị: chặn truy cập khi chưa đăng nhập, sidebar, header.
@@ -99,7 +94,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <span className="hidden leading-tight sm:block">
                 <span className="block text-[13.5px] font-semibold">{user.fullName}</span>
                 <span className="block text-[12px] text-muted">
-                  {roleLabels[user.role] ?? user.role}
+                  {USER_ROLE_LABELS[user.role]}
                 </span>
               </span>
               <button
